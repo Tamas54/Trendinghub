@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="hu" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Studio | TrendMaster</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#ef4444">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TrendMaster">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            DEFAULT: '#ef4444',
+                            dark: '#991b1b',
+                        },
+                        dark: {
+                            bg: '#0a0a0a',
+                            card: '#121212',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ef4444;
+        }
+
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #333 #0a0a0a;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #ef4444;
+        }
+
+        /* Glass Effect Utilities */
+        .glass {
+            background: rgba(18, 18, 18, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Editor Specific */
+        .editor-area {
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        /* SEO Score gauge */
+        .seo-gauge {
+            background: conic-gradient(
+                var(--gauge-color) var(--gauge-percent),
+                rgba(255,255,255,0.1) var(--gauge-percent)
+            );
+        }
+
+        /* Ambient Background */
+        .ambient-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+            background-color: #050505;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: blob 10s infinite alternate;
+        }
+
+        /* Batch Upload Styles */
+        .batch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+        }
+        .batch-item {
+            aspect-ratio: 1;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        .batch-item img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .batch-item .status-badge {
+            position: absolute; bottom: 4px; right: 4px;
+            font-size: 10px; padding: 2px 6px; border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-dark-bg text-gray-100 min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white">
+
+    <div class="ambient-light">
+        <div class="orb w-96 h-96 bg-red-900/20 top-[-50px] left-[-50px]"></div>
+        <div class="orb w-96 h-96 bg-orange-900/20 bottom-0 right-0 animation-delay-2000"></div>
+        <div class="orb w-64 h-64 bg-blue-900/10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+    </div>
+
+    <header class="glass sticky top-0 z-50">
+        <div class="px-4 md:px-6 py-3 md:py-4 flex flex-wrap md:flex-nowrap justify-between items-center gap-3">
+            <a href="/dashboard" class="group flex items-center gap-2 md:gap-3 text-gray-400 hover:text-white transition-all order-1">
+                <div class="p-1.5 md:p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
+                    <svg class="w-3.5 h-3.5 md:w-4 md:h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                </div>
+                <span class="font-medium text-xs md:text-sm tracking-wide hidden sm:inline">DASHBOARD</span>
+            </a>
+
+            <div class="flex flex-col items-center order-2 md:order-2 w-full md:w-auto">
+                <div class="flex items-center gap-2 md:gap-3">
+                    <h1 class="text-lg md:text-2xl font-black bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent tracking-tight uppercase">
+                        Editor Studio
+                    </h1>
+                    <span class="px-1.5 md:px-2 py-0.5 rounded text-[9px] md:text-[10px] font-bold bg-white/10 border border-white/10 text-gray-400">PRO</span>
+                </div>
+
+                <!-- Ideális posztolási idő a headerben -->
+                <div class="mt-1 flex items-center gap-2">
+                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Ideális posztolási idő:</span>
+                    <span id="optimalTimeHeader" class="text-sm font-bold text-blue-400">--:--</span>
+                </div>
+            </div>
+
+            <button type="button" onclick="window.open('/editor', '_blank')" class="group flex items-center gap-1.5 md:gap-2 text-gray-400 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-white/5 hover:border-white/20 text-xs md:text-sm order-3 cursor-pointer">
+                <span class="text-sm md:text-base">🪟</span>
+                <span class="font-medium hidden sm:inline">Új Fül</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-[1600px]">
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8 h-full">
+
+            <div class="lg:col-span-7 flex flex-col h-full">
+                <!-- TAB NAVIGATION -->
+                <div class="flex mb-2 gap-2">
+                    <button type="button" onclick="switchMainTab('editor')" id="mainTabEditor"
+                            class="flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg">
+                        <span class="flex items-center justify-center gap-2">
+                            <span>✏️</span> Szerkesztő
+                        </span>
+                    </button>
+                    <button type="button" onclick="switchMainTab('fromUrl')" id="mainTabFromUrl"
+                            class="flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10">
+                        <span class="flex items-center justify-center gap-2">
+                            <span>🔗</span> Cikkből poszt
+                        </span>
+                    </button>
+                </div>
+
+                <!-- TAB 1: EDITOR (eredeti) -->
+                <div id="tabContentEditor" class="glass-card rounded-2xl md:rounded-3xl flex flex-col h-[calc(100dvh-220px)] md:h-[calc(100vh-180px)] overflow-hidden shadow-2xl shadow-black/50">
+
+                    <div class="px-4 md:px-6 py-3 md:py-4 border-b border-white/5 flex flex-col gap-2 bg-white/5">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-1.5 md:gap-2">
+                                <span class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                <span class="text-[10px] md:text-xs font-bold text-gray-300 uppercase tracking-wider md:tracking-widest">AI Szerkesztő</span>
+                            </div>
+                            <span class="text-[10px] md:text-xs font-mono px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-black/40 border border-white/5 text-gray-400" id="charCount">0 kar.</span>
+                        </div>
+                        <!-- Forrás link - AI Szerkesztő alatt -->
+                        <div id="sourceLinkContainer">
+                            <a href="#" id="sourceLink" target="_blank"
+                               class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 text-xs transition-all border border-blue-500/30">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                <span id="sourceLinkText">📰 Forrás link (nincs beállítva)</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="px-2 md:px-4 py-2 md:py-3 border-b border-white/5 bg-black/20 flex flex-wrap gap-1.5 md:gap-2 overflow-x-auto">
+                        <button type="button" onclick="formatText('bold')" class="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all group text-sm md:text-base cursor-pointer" title="Vastag">
+                            <span class="font-black group-hover:scale-110 block">B</span>
+                        </button>
+                        <button type="button" onclick="formatText('italic')" class="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all group text-sm md:text-base cursor-pointer" title="Dőlt">
+                            <span class="italic group-hover:scale-110 block">I</span>
+                        </button>
+                        <button type="button" onclick="formatText('strike')" class="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all group text-sm md:text-base cursor-pointer" title="Áthúzott">
+                            <span class="line-through group-hover:scale-110 block">S</span>
+                        </button>
+                        <button type="button" onclick="formatText('mono')" class="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all group text-sm md:text-base cursor-pointer" title="Monospace">
+                            <span class="font-mono group-hover:scale-110 block">M</span>
+                        </button>
+                        <button type="button" onclick="formatText('underline')" class="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all group text-sm md:text-base cursor-pointer" title="Aláhúzott">
+                            <span class="underline group-hover:scale-110 block">U</span>
+                        </button>
+                        <div class="w-px h-6 md:h-8 bg-white/10 mx-1 md:mx-2"></div>
+                        <div class="flex bg-black/40 rounded-lg p-0.5 md:p-1 gap-0.5 md:gap-1">
+                            <button type="button" onclick="switchPalette('emojis')" id="tabEmojis" class="px-2 md:px-3 py-0.5 md:py-1 text-[10px] md:text-xs rounded-md bg-red-600 text-white font-medium transition-all shadow-lg cursor-pointer">😀</button>
+                            <button type="button" onclick="switchPalette('symbols')" id="tabSymbols" class="px-2 md:px-3 py-0.5 md:py-1 text-[10px] md:text-xs rounded-md text-gray-400 hover:text-white hover:bg-white/10 font-medium transition-all cursor-pointer">★</button>
+                            <button type="button" onclick="switchPalette('arrows')" id="tabArrows" class="px-2 md:px-3 py-0.5 md:py-1 text-[10px] md:text-xs rounded-md text-gray-400 hover:text-white hover:bg-white/10 font-medium transition-all cursor-pointer">→</button>
+                            <button type="button" onclick="switchPalette('special')" id="tabSpecial" class="px-2 md:px-3 py-0.5 md:py-1 text-[10px] md:text-xs rounded-md text-gray-400 hover:text-white hover:bg-white/10 font-medium transition-all cursor-pointer">©</button>
+                        </div>
+                    </div>
+
+                    <textarea id="postEditor"
+                        class="flex-grow w-full bg-transparent text-gray-100 p-4 md:p-8 focus:outline-none resize-none text-base md:text-lg leading-relaxed font-sans custom-scrollbar placeholder-gray-700 selection:bg-red-500/30"
+                        placeholder="Kezdj el írni..."></textarea>
+
+                    <div class="px-2 md:px-4 py-3 md:py-4 border-t border-white/5 bg-black/30 h-36 md:h-48 overflow-y-auto custom-scrollbar">
+                        <div id="paletteEmojis" class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 md:gap-2">
+                            <button type="button" onclick="insertChar('🔥')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">🔥</button>
+                            <button type="button" onclick="insertChar('🚀')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">🚀</button>
+                            <button type="button" onclick="insertChar('✨')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">✨</button>
+                            <button type="button" onclick="insertChar('💎')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">💎</button>
+                            <button type="button" onclick="insertChar('📈')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">📈</button>
+                            <button type="button" onclick="insertChar('💡')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">💡</button>
+                            <button type="button" onclick="insertChar('⚡')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">⚡</button>
+                            <button type="button" onclick="insertChar('🎯')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">🎯</button>
+                            <button type="button" onclick="insertChar('💪')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">💪</button>
+                            <button type="button" onclick="insertChar('✅')" class="p-3 md:p-0 h-auto md:h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-lg md:text-xl border border-white/5 cursor-pointer">✅</button>
+                        </div>
+                        <div id="paletteSymbols" class="hidden grid grid-cols-10 gap-2">
+                            </div>
+                        <div id="paletteArrows" class="hidden grid grid-cols-10 gap-2">
+                            </div>
+                        <div id="paletteSpecial" class="hidden grid grid-cols-10 gap-2">
+                            </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: CIKKBŐL POSZT (új) -->
+                <div id="tabContentFromUrl" class="hidden glass-card rounded-2xl md:rounded-3xl flex flex-col h-[calc(100dvh-220px)] md:h-[calc(100vh-180px)] overflow-hidden shadow-2xl shadow-black/50">
+
+                    <div class="px-4 md:px-6 py-3 md:py-4 border-b border-white/5 bg-white/5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            <span class="text-xs font-bold text-gray-300 uppercase tracking-widest">Cikkből Poszt Generátor</span>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-1">Illeszd be egy cikk URL-jét, és az AI automatikusan generál posztot</p>
+                    </div>
+
+                    <div class="flex-grow p-4 md:p-6 overflow-y-auto custom-scrollbar space-y-4">
+
+                        <!-- URL Input -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">🔗 Cikk URL</label>
+                            <div class="flex gap-2">
+                                <input type="url" id="articleUrl"
+                                       class="flex-1 bg-black/40 border border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-blue-500 focus:outline-none transition-all placeholder-gray-600"
+                                       placeholder="https://example.com/cikk-cime...">
+                                <button type="button" onclick="pasteFromClipboard()"
+                                        class="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-all text-sm"
+                                        title="Beillesztés vágólapról">
+                                    📋
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Nyelv választó -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">🌍 Nyelv</label>
+                            <select id="articleLang" class="w-full bg-black/40 border border-white/10 text-gray-300 rounded-xl px-4 py-3 text-sm focus:border-blue-500 focus:outline-none transition-all">
+                                <option value="hu">🇭🇺 Magyar</option>
+                                <option value="en">🇬🇧 English</option>
+                                <option value="de">🇩🇪 Deutsch</option>
+                                <option value="es">🇪🇸 Español</option>
+                                <option value="fr">🇫🇷 Français</option>
+                            </select>
+                        </div>
+
+                        <!-- Kimenet típus választó -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">📤 Kimenet típusa</label>
+
+                            <!-- POSZT vagy SCRIPT választó -->
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <button type="button" onclick="selectOutputType('post')" id="outputTypePost"
+                                        class="output-type-btn p-4 rounded-xl bg-gradient-to-br from-blue-600/30 to-purple-600/30 border-2 border-blue-500 text-white text-sm font-bold transition-all cursor-pointer flex flex-col items-center gap-2">
+                                    <span class="text-2xl">📝</span>
+                                    <span>POSZT</span>
+                                    <span class="text-[10px] text-gray-400 font-normal">Facebook, LinkedIn, Insta, X</span>
+                                </button>
+                                <button type="button" onclick="selectOutputType('script')" id="outputTypeScript"
+                                        class="output-type-btn p-4 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm font-bold transition-all hover:bg-white/10 cursor-pointer flex flex-col items-center gap-2">
+                                    <span class="text-2xl">🎬</span>
+                                    <span>SCRIPT</span>
+                                    <span class="text-[10px] text-gray-500 font-normal">TikTok, Reels, Shorts</span>
+                                </button>
+                            </div>
+
+                            <!-- POSZT platformok -->
+                            <div id="postPlatforms" class="space-y-2">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Platform választás:</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" onclick="selectPlatformStyle('facebook')" id="styleBtn_facebook"
+                                            class="platform-style-btn p-3 rounded-xl bg-blue-600/20 border-2 border-blue-500 text-blue-400 text-xs font-bold transition-all hover:bg-blue-600/30 flex items-center justify-center gap-2 cursor-pointer">
+                                        <span>🔵</span> Facebook
+                                    </button>
+                                    <button type="button" onclick="selectPlatformStyle('linkedin')" id="styleBtn_linkedin"
+                                            class="platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex items-center justify-center gap-2 cursor-pointer">
+                                        <span>💼</span> LinkedIn
+                                    </button>
+                                    <button type="button" onclick="selectPlatformStyle('instagram')" id="styleBtn_instagram"
+                                            class="platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex items-center justify-center gap-2 cursor-pointer">
+                                        <span>📸</span> Instagram
+                                    </button>
+                                    <button type="button" onclick="selectPlatformStyle('twitter')" id="styleBtn_twitter"
+                                            class="platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex items-center justify-center gap-2 cursor-pointer">
+                                        <span>❌</span> X/Twitter
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- SCRIPT platformok (rejtett alapból) -->
+                            <div id="scriptPlatforms" class="hidden space-y-2">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Videó platform választás:</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button type="button" onclick="selectPlatformStyle('tiktok')" id="styleBtn_tiktok"
+                                            class="platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex flex-col items-center gap-1 cursor-pointer">
+                                        <span class="text-lg">🎵</span>
+                                        <span>TikTok</span>
+                                    </button>
+                                    <button type="button" onclick="selectPlatformStyle('reels')" id="styleBtn_reels"
+                                            class="platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex flex-col items-center gap-1 cursor-pointer">
+                                        <span class="text-lg">🎬</span>
+                                        <span>FB Reels</span>
+                                    </button>
+                                    <button type="button" onclick="selectPlatformStyle('shorts')" id="styleBtn_shorts"
+                                            class="platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex flex-col items-center gap-1 cursor-pointer">
+                                        <span class="text-lg">📺</span>
+                                        <span>YT Shorts</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Generálás gomb -->
+                        <button type="button" onclick="generateFromUrl()" id="generateFromUrlBtn"
+                                class="w-full relative group overflow-hidden rounded-xl p-px cursor-pointer mt-4">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 group-hover:from-blue-500 group-hover:to-purple-500 transition-all duration-300"></div>
+                            <div class="relative bg-black/20 h-full w-full rounded-xl px-6 py-4 flex items-center justify-center gap-3 group-hover:bg-transparent transition-colors duration-300">
+                                <span class="text-2xl">✨</span>
+                                <span class="text-lg font-black text-white tracking-wider">GENERÁLÁS</span>
+                            </div>
+                        </button>
+
+                        <!-- Eredmény megjelenítés -->
+                        <div id="fromUrlResult" class="hidden mt-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">📝 Generált tartalom</label>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="copyGeneratedContent()" class="text-xs px-3 py-1 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-all">
+                                        📋 Másolás
+                                    </button>
+                                    <button type="button" onclick="sendToEditor()" class="text-xs px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all">
+                                        ✏️ Szerkesztőbe
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="generatedFromUrlContent" class="bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-gray-200 whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-5 flex flex-col gap-4 md:gap-6">
+
+                <!-- Super Trends Panel - FIRST -->
+                <div class="glass-card rounded-2xl md:rounded-3xl p-4 md:p-6 relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-3 md:mb-4">
+                        <h3 class="text-base md:text-lg font-bold text-gray-200 flex items-center gap-1.5 md:gap-2">
+                            <span class="text-lg md:text-xl">🔥</span> Super Trends
+                        </h3>
+                        <button type="button" onclick="loadSuperTrends()" class="text-xs text-gray-400 hover:text-white transition-all cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
+
+                    <div id="superTrendsContainer" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="animate-pulse">Betöltés...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEO SCORE PANEL - SECOND -->
+                <div id="seoPanel" class="glass-card rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">📊 SEO Elemzés</span>
+                        <button onclick="analyzeSEO()" class="text-xs px-3 py-1 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-all cursor-pointer" type="button">
+                            🔄 Újraelemzés
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 items-center mb-3">
+                        <!-- SEO Gauge -->
+                        <div class="col-span-1">
+                            <div id="seoGauge" class="w-full h-full rounded-full seo-gauge flex items-center justify-center"
+                                 style="--gauge-color: #22c55e; --gauge-percent: 0%; aspect-ratio: 1/1;">
+                                <div class="w-[70%] h-[70%] rounded-full bg-dark-card flex items-center justify-center">
+                                    <span id="seoScore" class="text-xl font-black text-green-400">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SEO Részletek -->
+                        <div class="col-span-2 space-y-1.5 text-[11px]">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Kulcsszavak:</span>
+                                <span id="seoKeywords" class="text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Hashtagek:</span>
+                                <span id="seoHashtags" class="text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Emojik:</span>
+                                <span id="seoEmojis" class="text-gray-300">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Olvashatóság:</span>
+                                <span id="seoReadability" class="text-gray-300">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEO Javaslatok -->
+                    <div id="seoSuggestions" class="mt-3 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-300 hidden">
+                        <div class="font-bold mb-1">💡 Javaslatok:</div>
+                        <ul id="seoSuggestionList" class="mt-1 space-y-1 list-disc list-inside"></ul>
+                    </div>
+
+                    <!-- Auto SEO -->
+                    <div class="mt-3 pt-3 border-t border-white/5 flex items-center gap-2 text-xs text-gray-500">
+                        <input type="checkbox" id="autoSeoCheck" checked class="w-3 h-3 rounded accent-green-500">
+                        <label for="autoSeoCheck">Auto SEO</label>
+                    </div>
+                </div>
+
+                <!-- 📁 BATCH MAPPA FELTÖLTÉS - THIRD -->
+                <div class="glass-card rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">📁 Mappa Spoofing</span>
+                        <span id="batchCount" class="text-xs text-gray-500">0 kép</span>
+                    </div>
+
+                    <div id="batchDropzone"
+                         class="border-2 border-dashed border-white/10 rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors cursor-pointer"
+                         onclick="document.getElementById('batchInput').click()"
+                         ondrop="handleBatchDrop(event)" ondragover="event.preventDefault()">
+                        <span class="text-3xl block mb-2">📂</span>
+                        <span class="text-xs text-gray-400">Húzd ide a mappát vagy kattints</span>
+                        <input type="file" id="batchInput" webkitdirectory directory multiple accept="image/*"
+                               onchange="handleBatchUpload(event)" class="hidden">
+                    </div>
+
+                    <!-- Batch Preview Grid -->
+                    <div id="batchPreview" class="batch-grid mt-3 hidden max-h-[200px] overflow-y-auto"></div>
+
+                    <!-- Batch Controls -->
+                    <div id="batchControls" class="mt-3 hidden">
+                        <div class="flex gap-2">
+                            <select id="batchDevice" class="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300">
+                                <option value="random">🎲 Random (minden képhez más)</option>
+                                <option value="iphone15">📱 iPhone 15 Pro (egységes)</option>
+                                <option value="samsung_s24">📱 Samsung S24 (egységes)</option>
+                                <option value="pixel8">📱 Pixel 8 Pro (egységes)</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="processBatchSpoof()" id="batchSpoofBtn"
+                                    class="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold hover:opacity-90 flex items-center justify-center gap-2">
+                                🚀 Mind Spoofing
+                            </button>
+                            <button onclick="downloadBatchZip()" id="batchDownloadBtn"
+                                    class="px-4 py-2 rounded-lg bg-green-600/20 text-green-400 text-xs font-bold hover:bg-green-600/30 hidden">
+                                📥 ZIP Letöltés
+                            </button>
+                        </div>
+                        <div id="batchProgress" class="mt-2 hidden">
+                            <div class="w-full h-2 bg-black/40 rounded-full overflow-hidden">
+                                <div id="batchProgressBar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style="width: 0%"></div>
+                            </div>
+                            <span id="batchProgressText" class="text-xs text-gray-400 mt-1 block text-center">0 / 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Posts Panel -->
+                <div class="glass-card rounded-2xl md:rounded-3xl p-4 md:p-6 relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-3 md:mb-4">
+                        <h3 class="text-base md:text-lg font-bold text-gray-200 flex items-center gap-1.5 md:gap-2">
+                            <span class="text-lg md:text-xl">📝</span> Legutóbbi Posztok
+                        </h3>
+                        <button type="button" onclick="loadRecentPosts()" class="text-xs text-gray-400 hover:text-white transition-all cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
+
+                    <div id="recentPostsContainer" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="animate-pulse">Betöltés...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl md:rounded-3xl p-1 relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-b from-red-500/5 to-transparent opacity-50"></div>
+
+                    <div class="p-4 md:p-6">
+                        <div class="flex flex-wrap md:flex-nowrap justify-between items-center mb-3 md:mb-4 gap-2">
+                            <h3 class="text-base md:text-lg font-bold text-gray-200 flex items-center gap-1.5 md:gap-2">
+                                <span class="text-lg md:text-xl">🎨</span> <span class="hidden sm:inline">AI Képgenerátor</span><span class="sm:hidden">Képgenerátor</span>
+                            </h3>
+                            <span class="text-[9px] md:text-[10px] font-mono bg-red-500/20 text-red-400 px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-red-500/30">DALL-E 3</span>
+                        </div>
+
+                        <div id="imageContainer" class="aspect-video bg-black/40 rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center relative overflow-hidden transition-all group-hover:border-white/20">
+                            <div id="imgPlaceholder" class="text-center p-6">
+                                <div class="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
+                                    <span class="text-3xl opacity-50">🖼️</span>
+                                </div>
+                                <p class="text-gray-500 text-sm font-medium">Nincs még kép generálva</p>
+                                <p class="text-gray-600 text-xs mt-1">A szöveg alapján készül</p>
+                            </div>
+
+                            <div id="imgLoading" class="hidden absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-20 backdrop-blur-sm">
+                                <div class="relative inline-block mb-6">
+                                    <div class="w-20 h-20 relative">
+                                        <div class="absolute inset-0 border-4 border-red-500/30 rounded-full animate-spin" style="animation-duration: 3s;"></div>
+                                        <div class="absolute inset-2 border-4 border-orange-500/50 rounded-full animate-spin" style="animation-duration: 2s; animation-direction: reverse;"></div>
+                                        <div class="absolute inset-4 bg-gradient-to-br from-red-500 to-orange-500 rounded-full animate-pulse flex items-center justify-center">
+                                            <span class="text-2xl">🎨</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-white font-bold tracking-wider text-sm">GENERÁLÁS...</p>
+                            </div>
+
+                            <img id="generatedImage" src="" class="hidden w-full h-full object-cover transition-all duration-700 hover:scale-105 cursor-zoom-in" />
+                        </div>
+
+                        <div class="mt-3 md:mt-4 space-y-2 md:space-y-3">
+                            <div class="grid grid-cols-2 gap-2 md:gap-3" style="position: relative; z-index: 10;">
+                                <button type="button" id="genImageBtn" onclick="generateImage()" class="bg-white/5 hover:bg-red-600 text-gray-300 hover:text-white py-2.5 md:py-3.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 md:gap-2 border border-white/10 hover:border-red-500 hover:shadow-lg hover:shadow-red-900/40 cursor-pointer" style="position: relative; z-index: 11; pointer-events: auto !important;">
+                                    <span class="hidden sm:inline">✨ Generálás</span><span class="sm:hidden">✨</span>
+                                </button>
+                                <button type="button" id="downloadBtn" onclick="downloadImage()" class="hidden bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white py-2.5 md:py-3.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 md:gap-2 border border-green-500/30 hover:border-green-500 cursor-pointer" style="position: relative; z-index: 11; pointer-events: auto !important;">
+                                    <span class="hidden sm:inline">⬇️ Letöltés</span><span class="sm:hidden">⬇️</span>
+                                </button>
+                            </div>
+
+                            <!-- Upload Image Section -->
+                            <div class="relative">
+                                <input type="file" id="imageUpload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                                <button type="button" onclick="document.getElementById('imageUpload').click()" class="w-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white py-2.5 md:py-3.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 md:gap-2 border border-blue-500/30 hover:border-blue-500 cursor-pointer">
+                                    <span>📤 Kép Feltöltés</span>
+                                </button>
+                            </div>
+
+                            <!-- EXIF Spoofing Section -->
+                            <div id="spoofingSection" class="hidden space-y-1.5 md:space-y-2">
+                                <label class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 md:gap-2">
+                                    <span>🔧</span> <span class="hidden sm:inline">Device Spoofing (EXIF)</span><span class="sm:hidden">EXIF Spoof</span>
+                                </label>
+
+                                <!-- Auto-spoof checkbox -->
+                                <div class="flex items-center gap-2 mb-1">
+                                    <input type="checkbox" id="autoSpoofCheckbox" checked class="w-3.5 h-3.5 md:w-4 md:h-4 bg-black/40 border-white/10 rounded focus:ring-purple-500 text-purple-600 cursor-pointer">
+                                    <label for="autoSpoofCheckbox" class="text-[10px] md:text-xs text-gray-400 cursor-pointer flex items-center gap-1">
+                                        <span>⚡</span> Auto-spoof generált képek
+                                    </label>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2" style="position: relative; z-index: 10;">
+                                    <select id="deviceSelect" class="bg-black/40 border border-white/10 text-gray-300 text-xs md:text-sm rounded-lg px-2 md:px-3 py-1.5 md:py-2 focus:outline-none focus:border-red-500 transition-all" style="position: relative; z-index: 11;">
+                                        <option value="random">🎲 Random</option>
+                                        <option value="iphone_14_pro">📱 iPhone 14 Pro</option>
+                                        <option value="iphone_12_pro_max">📱 iPhone 12 Pro Max</option>
+                                        <option value="samsung_s23_ultra">📱 Samsung S23</option>
+                                        <option value="samsung_s25_ultra_future">📱 Samsung S25</option>
+                                        <option value="samsung_a54">📱 Samsung A54</option>
+                                    </select>
+                                    <button type="button" onclick="spoofImage()" id="spoofBtn" class="bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white py-1.5 md:py-2 rounded-lg font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 md:gap-2 border border-purple-500/30 hover:border-purple-500 cursor-pointer" style="position: relative; z-index: 12; pointer-events: auto !important;">
+                                        <span class="hidden sm:inline">🔐 Spoof</span><span class="sm:hidden">🔐</span>
+                                    </button>
+                                </div>
+                                <p class="text-[9px] md:text-[10px] text-gray-600 italic">⚠️ Képletöltés után</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Generator Section -->
+                <div class="glass-card rounded-2xl md:rounded-3xl p-1 relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent opacity-50 pointer-events-none"></div>
+
+                    <div class="p-4 md:p-6">
+                        <div class="flex flex-wrap md:flex-nowrap justify-between items-center mb-3 md:mb-4 gap-2">
+                            <h3 class="text-base md:text-lg font-bold text-gray-200 flex items-center gap-1.5 md:gap-2">
+                                <span class="text-lg md:text-xl">🎬</span> <span class="hidden sm:inline">AI Videó Generátor</span><span class="sm:hidden">Videó Gen.</span>
+                            </h3>
+                            <span class="text-[9px] md:text-[10px] font-mono bg-purple-500/20 text-purple-400 px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-purple-500/30">VEO 3</span>
+                        </div>
+
+                        <div id="videoContainer" class="aspect-video bg-black/40 rounded-xl md:rounded-2xl border-2 border-dashed border-white/10 flex items-center justify-center relative overflow-hidden mb-3 md:mb-4">
+                            <div class="text-center p-4 md:p-6">
+                                <div class="w-12 h-12 md:w-16 md:h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-2 md:mb-4">
+                                    <span class="text-2xl md:text-3xl opacity-50">🎥</span>
+                                </div>
+                                <p class="text-gray-500 text-xs md:text-sm font-medium">Videó generálás hamarosan</p>
+                                <p class="text-gray-600 text-[10px] md:text-xs mt-1 hidden md:block">Gemini AI Agent • Veo 3 • Nano Banana</p>
+                            </div>
+                        </div>
+
+                        <!-- Video Prompt Editor -->
+                        <div class="mb-3 md:mb-4">
+                            <label class="text-[10px] md:text-xs text-gray-400 mb-1.5 md:mb-2 block font-medium">Videó Prompt (Veo 3.1)</label>
+                            <textarea
+                                id="videoPromptEditor"
+                                class="w-full bg-black/20 text-white rounded-lg p-2 md:p-3 text-xs md:text-sm border border-white/10 focus:border-purple-500 focus:outline-none transition-all resize-none"
+                                rows="2"
+                                placeholder="Az AI automatikusan generál egy promptot a post alapján..."></textarea>
+                            <div class="text-[9px] md:text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                                <span>💡</span>
+                                <span class="hidden sm:inline">Tipp: Rövid, egyszerű vizuális leírás (max 80 karakter)</span>
+                                <span class="sm:hidden">Egyszerű vizuális leírás</span>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-2 mb-3 md:mb-4">
+                            <button type="button" onclick="generateVideoPrompt()" class="flex-1 bg-white/5 hover:bg-blue-600 text-gray-300 hover:text-white py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1 md:gap-1.5 border border-white/10 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-900/40 cursor-pointer">
+                                <span class="hidden sm:inline">✨ Prompt Generálás</span>
+                                <span class="sm:hidden">✨ Prompt</span>
+                            </button>
+                            <button type="button" onclick="generateVideo()" class="flex-1 bg-white/5 hover:bg-purple-600 text-gray-300 hover:text-white py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1 md:gap-1.5 border border-white/10 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-900/40 cursor-pointer">
+                                <span class="hidden sm:inline">🎬 Videó Generálás</span>
+                                <span class="sm:hidden">🎬 Videó</span>
+                            </button>
+                        </div>
+
+                        <!-- Video Spoofing Section -->
+                        <div id="videoSpoofingSection" class="hidden space-y-1.5 md:space-y-2 mt-3 md:mt-4">
+                            <label class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 md:gap-2">
+                                <span>🔧</span> <span class="hidden sm:inline">Device Spoofing (Video)</span><span class="sm:hidden">Video Spoof</span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-2" style="position: relative; z-index: 10;">
+                                <select id="videoDeviceSelect" class="bg-black/40 border border-white/10 text-gray-300 text-xs md:text-sm rounded-lg px-2 md:px-3 py-1.5 md:py-2 focus:outline-none focus:border-red-500 transition-all" style="position: relative; z-index: 11;">
+                                    <option value="random">🎲 Random</option>
+                                    <option value="iphone_14_pro">📱 iPhone 14 Pro</option>
+                                    <option value="iphone_12_pro_max">📱 iPhone 12 Pro Max</option>
+                                    <option value="samsung_s23_ultra">📱 Samsung S23</option>
+                                    <option value="samsung_s25_ultra_future">📱 Samsung S25</option>
+                                    <option value="samsung_a54">📱 Samsung A54</option>
+                                </select>
+                                <button type="button" onclick="spoofVideo()" id="videoSpoofBtn" class="bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white py-1.5 md:py-2 rounded-lg font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 md:gap-2 border border-purple-500/30 hover:border-purple-500 cursor-pointer" style="position: relative; z-index: 12; pointer-events: auto !important;">
+                                    <span class="hidden sm:inline">🔐 Spoof</span><span class="sm:hidden">🔐</span>
+                                </button>
+                            </div>
+                            <p class="text-[9px] md:text-[10px] text-gray-600 italic">⚠️ Videó generálás után</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl md:rounded-3xl p-4 md:p-6 relative overflow-hidden">
+                    <div class="flex items-center gap-1.5 md:gap-2 mb-4 md:mb-6">
+                        <span class="text-lg md:text-xl">📡</span>
+                        <h3 class="text-base md:text-lg font-bold text-gray-200 uppercase tracking-wide">Publikálás</h3>
+                    </div>
+
+                    <!-- Facebook Connection Status -->
+                    <div id="fbConnectionStatus" class="mb-4 p-3 rounded-lg bg-black/40 border border-white/10">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">🔵 Facebook:</span>
+                                <span id="fbStatusText" class="text-xs text-gray-400">Ellenőrzés...</span>
+                            </div>
+                            <button type="button" id="fbConnectBtn" onclick="connectFacebook()" class="hidden text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-all cursor-pointer">
+                                Csatlakozás
+                            </button>
+                            <button type="button" id="fbDisconnectBtn" onclick="disconnectFacebook()" class="hidden text-xs text-red-400 hover:text-red-300 transition-all cursor-pointer">
+                                Leválasztás
+                            </button>
+                        </div>
+                        <div id="fbProfileInfo" class="hidden mt-2 text-xs text-gray-500">
+                            Profil: <span id="fbProfileName"></span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 md:gap-3 mb-6 md:mb-8">
+                        <label class="cursor-pointer relative group">
+                            <input type="checkbox" checked class="peer sr-only">
+                            <div class="p-2.5 md:p-4 rounded-xl md:rounded-2xl bg-black/40 border border-white/5 peer-checked:border-blue-500 peer-checked:bg-blue-500/10 transition-all text-center opacity-50 peer-checked:opacity-100 hover:bg-white/5">
+                                <div class="text-xl md:text-2xl mb-1 md:mb-2 group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">🔵</div>
+                                <div class="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">FB</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer relative group">
+                            <input type="checkbox" class="peer sr-only">
+                            <div class="p-2.5 md:p-4 rounded-xl md:rounded-2xl bg-black/40 border border-white/5 peer-checked:border-pink-500 peer-checked:bg-pink-500/10 transition-all text-center opacity-50 peer-checked:opacity-100 hover:bg-white/5">
+                                <div class="text-xl md:text-2xl mb-1 md:mb-2 group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]">📸</div>
+                                <div class="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">IG</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer relative group">
+                            <input type="checkbox" class="peer sr-only">
+                            <div class="p-2.5 md:p-4 rounded-xl md:rounded-2xl bg-black/40 border border-white/5 peer-checked:border-white peer-checked:bg-white/10 transition-all text-center opacity-50 peer-checked:opacity-100 hover:bg-white/5">
+                                <div class="text-xl md:text-2xl mb-1 md:mb-2 group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">❌</div>
+                                <div class="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">X</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <button type="button" onclick="publishContent()" class="w-full relative group overflow-hidden rounded-xl md:rounded-2xl p-px cursor-pointer">
+                        <div class="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 group-hover:from-red-500 group-hover:to-orange-500 transition-all duration-300"></div>
+                        <div class="absolute inset-0 opacity-0 group-hover:opacity-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] transition-opacity duration-300"></div>
+
+                        <div class="relative bg-black/20 h-full w-full rounded-xl md:rounded-2xl px-4 md:px-6 py-3 md:py-4 flex items-center justify-center gap-2 md:gap-3 group-hover:bg-transparent transition-colors duration-300">
+                            <span class="text-xl md:text-2xl group-hover:animate-rocket">🚀</span>
+                            <span class="text-sm md:text-lg font-black text-white tracking-wider">PUBLIKÁLÁS</span>
+                        </div>
+                    </button>
+
+                    <div class="mt-4 p-4 rounded-xl bg-black/40 border border-white/10">
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Időzített Publikálás</div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <button type="button" onclick="setSchedulePreset(1)" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 transition-all">
+                                +1 óra
+                            </button>
+                            <button type="button" onclick="setSchedulePreset(2)" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 transition-all">
+                                +2 óra
+                            </button>
+                            <button type="button" onclick="setSchedulePreset(4)" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 transition-all">
+                                +4 óra
+                            </button>
+                            <button type="button" onclick="setSchedulePreset(24)" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 transition-all">
+                                +1 nap
+                            </button>
+                        </div>
+
+                        <input type="datetime-local" id="scheduledTime" class="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/10 text-white text-sm focus:border-orange-500 focus:outline-none mb-3">
+
+                        <button type="button" onclick="schedulePost()" class="w-full relative group overflow-hidden rounded-xl p-px cursor-pointer">
+                            <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 group-hover:from-blue-500 group-hover:to-purple-500 transition-all duration-300"></div>
+
+                            <div class="relative bg-black/20 h-full w-full rounded-xl px-4 py-2.5 flex items-center justify-center gap-2 group-hover:bg-transparent transition-colors duration-300">
+                                <span class="text-lg">⏰</span>
+                                <span class="text-sm font-bold text-white tracking-wider">IDŐZÍTÉS</span>
+                            </div>
+                        </button>
+
+                        <button type="button" onclick="viewScheduledPosts()" class="w-full mt-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 transition-all">
+                            📅 Időzített posztok megtekintése
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- MOBILE FOOTER - Csak mobilon látható -->
+    <div class="fixed bottom-0 left-0 right-0 lg:hidden bg-dark-card/95 backdrop-blur-lg border-t border-white/10 p-3 z-50">
+        <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="document.getElementById('postEditor').scrollIntoView({behavior: 'smooth'})" class="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                <span class="text-xs font-bold">Szerkesztő</span>
+            </button>
+            <button type="button" onclick="document.getElementById('imageContainer').scrollIntoView({behavior: 'smooth'})" class="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span class="text-xs font-bold">Média</span>
+            </button>
+            <button type="button" onclick="publishContent()" class="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-all active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                <span class="text-xs font-bold">KÜLDÉS</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // REUSED LOGIC - NO CHANGES TO FUNCTIONALITY
+        
+        let currentImageUrl = null;
+        let currentSourceUrl = null;  // Forrás link kommenthez
+        let batchFiles = [];  // Batch upload képek
+        let batchSpoofedFiles = [];  // Feldolgozott képek
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const draftText = localStorage.getItem('draftPost');
+            const sourceUrl = localStorage.getItem('draftSourceUrl');
+            const textarea = document.getElementById('postEditor');
+
+            if (draftText) {
+                textarea.value = draftText;
+                updateCharCount();
+
+                // Show SEO Panel if there's text
+                document.getElementById('seoPanel').classList.remove('hidden');
+                // Run SEO analysis after a short delay
+                setTimeout(() => analyzeSEO(), 100);
+            }
+
+            // Load source URL if available (after functions are defined)
+            if (sourceUrl) {
+                currentSourceUrl = sourceUrl;
+                setTimeout(() => setSourceLink(sourceUrl), 100);
+            }
+
+            textarea.addEventListener('input', updateCharCount);
+
+            // Init palettes
+            initPalettes();
+
+            // Update optimal posting time
+            updateOptimalPostingTime();
+            // Refresh every 30 minutes
+            setInterval(updateOptimalPostingTime, 30 * 60 * 1000);
+        });
+
+        function updateCharCount() {
+            const count = document.getElementById('postEditor').value.length;
+            document.getElementById('charCount').innerText = count + ' karakter';
+        }
+
+        function formatText(type) {
+            const textarea = document.getElementById('postEditor');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+
+            if (!selectedText) {
+                alert('Jelölj ki szöveget a formázáshoz!');
+                return;
+            }
+
+            let formatted = '';
+            switch(type) {
+                case 'bold': formatted = selectedText.split('').map(char => {
+                        const code = char.charCodeAt(0);
+                        if (code >= 65 && code <= 90) return String.fromCharCode(code + 120171);
+                        if (code >= 97 && code <= 122) return String.fromCharCode(code + 120165);
+                        if (code >= 48 && code <= 57) return String.fromCharCode(code + 120734);
+                        return char;
+                    }).join(''); break;
+                case 'italic': formatted = selectedText.split('').map(char => {
+                        const code = char.charCodeAt(0);
+                        if (code >= 65 && code <= 90) return String.fromCharCode(code + 120224);
+                        if (code >= 97 && code <= 122) return String.fromCharCode(code + 120218);
+                        return char;
+                    }).join(''); break;
+                case 'strike': formatted = selectedText.split('').join('\u0336') + '\u0336'; break;
+                case 'mono': formatted = selectedText.split('').map(char => {
+                        const code = char.charCodeAt(0);
+                        if (code >= 65 && code <= 90) return String.fromCharCode(code + 120432);
+                        if (code >= 97 && code <= 122) return String.fromCharCode(code + 120426);
+                        if (code >= 48 && code <= 57) return String.fromCharCode(code + 120734);
+                        return char;
+                    }).join(''); break;
+                case 'underline': formatted = selectedText.split('').join('\u0332') + '\u0332'; break;
+            }
+            textarea.value = textarea.value.substring(0, start) + formatted + textarea.value.substring(end);
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + formatted.length;
+            textarea.focus();
+            updateCharCount();
+        }
+
+        function insertChar(char) {
+            const textarea = document.getElementById('postEditor');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + char + text.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + char.length;
+            textarea.focus();
+            updateCharCount();
+        }
+
+        function switchPalette(palette) {
+            ['emojis', 'symbols', 'arrows', 'special'].forEach(p => {
+                document.getElementById('palette' + capitalize(p)).classList.add('hidden');
+                const tab = document.getElementById('tab' + capitalize(p));
+                tab.classList.remove('bg-red-600', 'text-white', 'shadow-lg');
+                tab.classList.add('text-gray-400');
+            });
+
+            document.getElementById('palette' + capitalize(palette)).classList.remove('hidden');
+            const activeTab = document.getElementById('tab' + capitalize(palette));
+            activeTab.classList.add('bg-red-600', 'text-white', 'shadow-lg');
+            activeTab.classList.remove('text-gray-400');
+        }
+
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        // Helper to fill palettes (removed hardcoded HTML to save space, JS does it)
+        function initPalettes() {
+            const symbols = ['•','○','●','◆','◇','★','☆','✓','✔','✖','►','◄','▶','◀','▲','▼','♦','♥','♠','♣'];
+            const arrows = ['→','←','↑','↓','↔','↕','⇒','⇐','⇑','⇓','➜','➔','➡','⬅','⬆','⬇','↗','↘','↙','↖'];
+            const special = ['©','®','™','€','$','£','¥','°','±','×','÷','≈','≠','≤','≥','∞','√','∑','π','µ'];
+
+            const createBtn = (char) => `<button type="button" onclick="insertChar('${char}')" class="h-10 rounded-lg bg-white/5 hover:bg-white/10 hover:scale-110 transition-all text-xl border border-white/5 cursor-pointer">${char}</button>`;
+            
+            document.getElementById('paletteSymbols').innerHTML = symbols.map(createBtn).join('');
+            document.getElementById('paletteArrows').innerHTML = arrows.map(createBtn).join('');
+            document.getElementById('paletteSpecial').innerHTML = special.map(createBtn).join('');
+        }
+
+        async function generateImage() {
+            const postText = document.getElementById('postEditor').value;
+            if (!postText.trim()) { alert('Írj szöveget!'); return; }
+            
+            const btn = document.getElementById('genImageBtn');
+            const loading = document.getElementById('imgLoading');
+            const resultImg = document.getElementById('generatedImage');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const placeholder = document.getElementById('imgPlaceholder');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            loading.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            resultImg.classList.add('hidden');
+            downloadBtn.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: postText })
+                });
+                const data = await response.json();
+                if (data.success && data.image_url) {
+                    currentImageUrl = data.image_url;
+                    loading.classList.add('hidden');
+                    resultImg.src = currentImageUrl;
+                    resultImg.classList.remove('hidden');
+                    downloadBtn.classList.remove('hidden');
+                    btn.innerHTML = "<span>🔄 Újragenerálás</span>";
+
+                    // Show spoofing section
+                    const spoofingSection = document.getElementById('spoofingSection');
+                    if (spoofingSection) {
+                        spoofingSection.classList.remove('hidden');
+                    }
+
+                    // Auto-spoof if checkbox is checked
+                    const autoSpoofCheckbox = document.getElementById('autoSpoofCheckbox');
+                    if (autoSpoofCheckbox && autoSpoofCheckbox.checked) {
+                        console.log('⚡ Auto-spoofing enabled, downloading image first...');
+                        // Download image through our server first to avoid CORS
+                        setTimeout(async () => {
+                            try {
+                                const downloadResponse = await fetch('/api/download-image', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ image_url: currentImageUrl })
+                                });
+                                const imageBlob = await downloadResponse.blob();
+                                window.uploadedImageFile = new File([imageBlob], 'generated-image.jpg', { type: 'image/jpeg' });
+                                console.log('✅ Image downloaded, now spoofing...');
+                                spoofImage();
+                            } catch (err) {
+                                console.error('Auto-spoof download failed:', err);
+                            }
+                        }, 500);
+                    }
+                } else { throw new Error(data.error); }
+            } catch (error) {
+                loading.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                alert('Hiba: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        }
+
+        // Video Generation
+        let currentVideoPath = null;
+
+        async function generateVideoPrompt() {
+            const postTextInput = document.getElementById('postEditor');
+            const postText = postTextInput?.value?.trim();
+
+            if (!postText) {
+                alert('Kérlek, írj be vagy válassz ki egy Facebook post szöveget!');
+                return;
+            }
+
+            // Find the prompt generate button
+            const btn = event?.target || document.querySelector('button[onclick="generateVideoPrompt()"]');
+            if (!btn) {
+                console.error('Prompt generate button not found!');
+                return;
+            }
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="hidden sm:inline">⏳ Generálás...</span><span class="sm:hidden">⏳</span>';
+
+            try {
+                const response = await fetch('/api/generate-video-prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        post_text: postText
+                    })
+                });
+
+                if (!response.ok) throw new Error('Prompt generation failed');
+
+                const data = await response.json();
+
+                // Update the video prompt editor
+                const videoPromptEditor = document.getElementById('videoPromptEditor');
+                if (videoPromptEditor && data.video_prompt) {
+                    videoPromptEditor.value = data.video_prompt;
+                    videoPromptEditor.focus();
+                }
+
+                console.log('✅ Video prompt generated:', data.video_prompt);
+
+            } catch (error) {
+                console.error('Prompt generation error:', error);
+                alert('Hiba a prompt generálás során: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function generateVideo() {
+            const videoPromptInput = document.getElementById('videoPromptEditor');
+            const prompt = videoPromptInput?.value?.trim();
+
+            if (!prompt) {
+                alert('Kérlek, generálj vagy írj be egy video promptot!');
+                return;
+            }
+
+            // Find the video generate button
+            const btn = event?.target || document.querySelector('button[onclick="generateVideo()"]');
+            if (!btn) {
+                console.error('Video generate button not found!');
+                alert('Hiba: videó gomb nem található!');
+                return;
+            }
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Videó generálás...</span>';
+
+            try {
+                const response = await fetch('/api/generate-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        duration: 5  // 5 seconds
+                    })
+                });
+
+                if (!response.ok) throw new Error('Video generation failed');
+
+                const data = await response.json();
+                currentVideoPath = data.video_path;
+
+                // Update video preview
+                const videoContainer = document.getElementById('videoContainer');
+                videoContainer.innerHTML = `
+                    <video controls class="w-full h-full object-contain">
+                        <source src="/api/serve-video/${encodeURIComponent(currentVideoPath)}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+
+                // Show video spoofing section
+                const videoSpoofingSection = document.getElementById('videoSpoofingSection');
+                if (videoSpoofingSection) {
+                    videoSpoofingSection.classList.remove('hidden');
+                }
+
+                console.log('✅ Video generated:', data);
+                alert('Videó sikeresen generálva! 🎬');
+
+            } catch (error) {
+                console.error('Video generation error:', error);
+                alert('Hiba a videógenerálás során: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function downloadImage() {
+            if (!currentImageUrl) return;
+
+            const btn = document.getElementById('downloadBtn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Letöltés...</span>';
+
+            try {
+                // Use backend proxy to download (avoids CORS)
+                const response = await fetch('/api/download-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_url: currentImageUrl })
+                });
+
+                if (!response.ok) throw new Error('Download failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trendmaster-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                showDownloadSuccess();
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Letöltési hiba: ' + error.message + '\n\nPróbáld újra vagy nyisd meg új ablakban.');
+                // Fallback: open in new tab
+                window.open(currentImageUrl, '_blank');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                // ALWAYS show spoofing section after download attempt
+                document.getElementById('spoofingSection').classList.remove('hidden');
+            }
+        }
+
+        function showDownloadSuccess() {
+            const btn = document.getElementById('downloadBtn');
+            const original = btn.innerHTML;
+            btn.innerHTML = '<span>✅ Kész!</span>';
+            btn.classList.replace('bg-green-600/20', 'bg-green-600');
+            setTimeout(() => {
+                btn.innerHTML = original;
+                btn.classList.replace('bg-green-600', 'bg-green-600/20');
+            }, 2000);
+        }
+
+        async function spoofImage() {
+            console.log('🔐 Spoof kezdése...');
+            console.log('uploadedImageFile:', window.uploadedImageFile);
+            console.log('currentImageUrl:', currentImageUrl);
+
+            if (!currentImageUrl && !window.uploadedImageFile) {
+                alert('Nincs kép a spoofing-hoz! Először generálj vagy tölts fel képet.');
+                return;
+            }
+
+            const device = document.getElementById('deviceSelect').value;
+            const btn = document.getElementById('spoofBtn');
+            const originalHTML = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Spoofing...</span>';
+
+            try {
+                let blob;
+
+                // Check if we have an uploaded file or need to fetch from URL
+                if (window.uploadedImageFile) {
+                    // Use uploaded file directly
+                    console.log('✅ Feltöltött fájl használata:', window.uploadedImageFile.name);
+                    blob = window.uploadedImageFile;
+                } else if (currentImageUrl) {
+                    // Download image from URL (DALL-E generated) via our server to avoid CORS
+                    console.log('⬇️ Kép letöltése szerveren keresztül (CORS megkerülés)...');
+                    const response = await fetch('/api/download-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_url: currentImageUrl })
+                    });
+                    blob = await response.blob();
+                    console.log('✅ Blob letöltve:', blob.size, 'bytes');
+                } else {
+                    throw new Error('No image available');
+                }
+
+                // Create form data
+                console.log('📦 FormData készítése...');
+                const formData = new FormData();
+                formData.append('image', blob, 'image.jpg');
+                formData.append('device', device);
+                console.log('Device:', device);
+
+                // Send to spoof endpoint
+                console.log('📡 POST /api/spoof-image...');
+                const spoofResponse = await fetch('/api/spoof-image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', spoofResponse.status);
+
+                if (!spoofResponse.ok) {
+                    const errorText = await spoofResponse.text();
+                    console.error('❌ Spoof hiba:', errorText);
+                    throw new Error('Spoofing failed: ' + errorText);
+                }
+
+                // Download spoofed image
+                const spoofedBlob = await spoofResponse.blob();
+                const url = window.URL.createObjectURL(spoofedBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `spoofed-${device}-${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                // Show success
+                btn.innerHTML = '<span>✅ Kész!</span>';
+                btn.classList.replace('bg-purple-600/20', 'bg-purple-600');
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.replace('bg-purple-600', 'bg-purple-600/20');
+                }, 2000);
+
+            } catch (error) {
+                alert('EXIF spoofing hiba: ' + error.message);
+                btn.innerHTML = originalHTML;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function spoofVideo() {
+            console.log('🔐 Video spoof kezdése...');
+            console.log('currentVideoPath:', currentVideoPath);
+
+            if (!currentVideoPath) {
+                alert('Nincs videó a spoofing-hoz! Először generálj videót.');
+                return;
+            }
+
+            const device = document.getElementById('videoDeviceSelect').value;
+            const btn = document.getElementById('videoSpoofBtn');
+            const originalHTML = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Spoofing...</span>';
+
+            try {
+                // Fetch video from server
+                console.log('⬇️ Videó letöltése a szerverről...');
+                const videoResponse = await fetch(`/api/serve-video/${encodeURIComponent(currentVideoPath)}`);
+                if (!videoResponse.ok) {
+                    throw new Error('Failed to fetch video');
+                }
+                const videoBlob = await videoResponse.blob();
+                console.log('✅ Video blob letöltve:', videoBlob.size, 'bytes');
+
+                // Create form data
+                console.log('📦 FormData készítése...');
+                const formData = new FormData();
+                formData.append('video', videoBlob, 'video.mp4');
+                formData.append('device', device);
+                console.log('Device:', device);
+
+                // Send to spoof endpoint
+                console.log('📡 POST /api/spoof-video...');
+                const spoofResponse = await fetch('/api/spoof-video', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', spoofResponse.status);
+
+                if (!spoofResponse.ok) {
+                    const errorText = await spoofResponse.text();
+                    console.error('❌ Spoof hiba:', errorText);
+                    throw new Error('Video spoofing failed: ' + errorText);
+                }
+
+                // Download spoofed video
+                const spoofedBlob = await spoofResponse.blob();
+                const url = window.URL.createObjectURL(spoofedBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `spoofed-video-${device}-${Date.now()}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                // Show success
+                btn.innerHTML = '<span>✅ Kész!</span>';
+                btn.classList.replace('bg-purple-600/20', 'bg-purple-600');
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.replace('bg-purple-600', 'bg-purple-600/20');
+                }, 2000);
+
+            } catch (error) {
+                alert('Video spoofing hiba: ' + error.message);
+                btn.innerHTML = originalHTML;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function generateVideo_OLD() {
+            alert('🎬 Videó generálás hamarosan elérhető!\n\nIntegrációk:\n• Gemini AI Agent\n• Veo 3 (Google)\n• Nano Banana\n\nKérlek várj, amíg a backend API-k bekötésre kerülnek.');
+        }
+
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check if it's an image
+            if (!file.type.startsWith('image/')) {
+                alert('Kérlek, válassz egy képfájlt!');
+                return;
+            }
+
+            // Show loading state
+            const resultImg = document.getElementById('generatedImage');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const placeholder = document.getElementById('imgPlaceholder');
+            const loading = document.getElementById('imgLoading');
+
+            loading.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            resultImg.classList.add('hidden');
+            downloadBtn.classList.add('hidden');
+
+            try {
+                // Store the file FIRST for spoofing
+                window.uploadedImageFile = file;
+                console.log('📁 Fájl tárolva:', file.name, 'Size:', file.size);
+
+                // Create object URL for preview
+                const imageUrl = URL.createObjectURL(file);
+                currentImageUrl = imageUrl;
+
+                // Display the uploaded image IMMEDIATELY
+                loading.classList.add('hidden');
+                resultImg.src = imageUrl;
+                resultImg.classList.remove('hidden');
+
+                // Show spoofing section IMMEDIATELY (important!)
+                const spoofSection = document.getElementById('spoofingSection');
+                spoofSection.classList.remove('hidden');
+                console.log('✅ Spoofing section megjelenítve');
+
+                console.log('✅ Kép feltöltve és preview kész');
+
+            } catch (error) {
+                console.error('❌ Upload hiba:', error);
+                loading.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                alert('Hiba a kép betöltésekor: ' + error.message);
+            }
+        }
+
+        async function publishContent() {
+            const postText = document.getElementById('postEditor').value;
+            if (!postText.trim()) { alert('Üres poszt!'); return; }
+
+            const btn = document.querySelector('button[onclick="publishContent()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ KÜLDÉS...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/publish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: postText,
+                        provider: 'facebook',
+                        image_url: currentImageUrl,
+                        source_url: currentSourceUrl  // Forrás link kommenthez
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    btn.innerHTML = "✅ KIKÜLDVE!";
+                    localStorage.removeItem('draftPost');
+                    setTimeout(() => window.location.href = '/dashboard', 2000);
+                } else { throw new Error(data.error); }
+            } catch (error) {
+                alert('Hiba: ' + error.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function setSchedulePreset(hours) {
+            const now = new Date();
+            now.setHours(now.getHours() + hours);
+
+            // Format to datetime-local input format (YYYY-MM-DDTHH:MM)
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+
+            const formattedTime = `${year}-${month}-${day}T${hour}:${minute}`;
+            document.getElementById('scheduledTime').value = formattedTime;
+        }
+
+        async function schedulePost() {
+            const postText = document.getElementById('postEditor').value;
+            const scheduledTime = document.getElementById('scheduledTime').value;
+
+            if (!postText.trim()) {
+                alert('Üres poszt!');
+                return;
+            }
+
+            if (!scheduledTime) {
+                alert('Válassz időpontot vagy használd a gyors gombokat!');
+                return;
+            }
+
+            const btn = document.querySelector('button[onclick="schedulePost()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="text-lg">⏳</span><span class="text-sm font-bold text-white tracking-wider">MENTÉS...</span>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/schedule-post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        post_content: postText,
+                        scheduled_time: scheduledTime,
+                        image_path: currentImageUrl,
+                        platform: 'facebook'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    btn.innerHTML = '<span class="text-lg">✅</span><span class="text-sm font-bold text-white tracking-wider">BEÜTEMEZVE!</span>';
+                    alert(`Poszt időzítve: ${new Date(scheduledTime).toLocaleString('hu-HU')}`);
+                    document.getElementById('scheduledTime').value = '';
+                    localStorage.removeItem('draftPost');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                alert('Hiba az időzítés során: ' + error.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function viewScheduledPosts() {
+            try {
+                const response = await fetch('/api/scheduled-posts');
+                const data = await response.json();
+
+                if (data.success && data.posts.length > 0) {
+                    const postsHtml = data.posts.map(post => {
+                        const scheduledDate = new Date(post.scheduled_time);
+                        const statusEmoji = post.status === 'pending' ? '⏰' : post.status === 'published' ? '✅' : '❌';
+                        const statusText = post.status === 'pending' ? 'Várakozik' : post.status === 'published' ? 'Kiküldve' : 'Sikertelen';
+
+                        return `
+                            <div class="p-3 mb-2 rounded-lg bg-black/40 border border-white/10">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-xs font-bold text-gray-300">${statusEmoji} ${statusText}</span>
+                                    ${post.status === 'pending' ? `<button onclick="deleteScheduledPost(${post.id})" class="text-red-400 hover:text-red-300 text-xs">Törlés</button>` : ''}
+                                </div>
+                                <div class="text-sm text-gray-400 mb-2">${post.post_content.substring(0, 100)}${post.post_content.length > 100 ? '...' : ''}</div>
+                                <div class="text-xs text-gray-500">📅 ${scheduledDate.toLocaleString('hu-HU')}</div>
+                                ${post.error_message ? `<div class="text-xs text-red-400 mt-1">Hiba: ${post.error_message}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+
+                    const modal = `
+                        <div id="scheduledPostsModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onclick="closeModal(event)">
+                            <div class="bg-dark-card p-6 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-white/10" onclick="event.stopPropagation()">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-xl font-bold text-white">Időzített Posztok</h2>
+                                    <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                                </div>
+                                <div>${postsHtml}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.insertAdjacentHTML('beforeend', modal);
+                } else {
+                    alert('Nincs időzített poszt.');
+                }
+            } catch (error) {
+                alert('Hiba: ' + error.message);
+            }
+        }
+
+        function closeModal(event) {
+            if (!event || event.target.id === 'scheduledPostsModal') {
+                const modal = document.getElementById('scheduledPostsModal');
+                if (modal) modal.remove();
+            }
+        }
+
+        async function deleteScheduledPost(postId) {
+            if (!confirm('Biztosan törlöd ezt az időzített posztot?')) return;
+
+            try {
+                const response = await fetch(`/api/delete-scheduled-post/${postId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    closeModal();
+                    alert('Poszt törölve!');
+                } else {
+                    alert('Hiba a törlés során: ' + data.message);
+                }
+            } catch (error) {
+                alert('Hiba: ' + error.message);
+            }
+        }
+
+        // ============================================================================
+        // SUPER TRENDS INTEGRATION
+        // ============================================================================
+
+        async function loadSuperTrends() {
+            const container = document.getElementById('superTrendsContainer');
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><div class="animate-pulse">Betöltés...</div></div>';
+
+            try {
+                const response = await fetch('/api/super-trends');
+                const data = await response.json();
+
+                if (data.super_trends && data.super_trends.length > 0) {
+                    container.innerHTML = data.super_trends.map(trend => `
+                        <div class="p-3 rounded-lg bg-black/40 border border-white/10 hover:border-red-500/50 transition-all cursor-pointer group"
+                             onclick="selectTrend('${trend.id}', '${encodeURIComponent(trend.topic)}')">
+                            <div class="flex items-start justify-between gap-2 mb-1">
+                                <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors flex-grow">${trend.topic}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 whitespace-nowrap">${trend.category_label}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="text-[10px] text-gray-500">${trend.source_count} forrás</span>
+                                <div class="flex gap-1">
+                                    ${trend.sources.slice(0, 3).map(s => `<span class="text-[9px] px-1 py-0.5 rounded bg-white/5 text-gray-600">${s}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">Nincs super trend</div>';
+                }
+            } catch (error) {
+                console.error('Super trends hiba:', error);
+                container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm">Hiba a betöltéskor</div>';
+            }
+        }
+
+        async function selectTrend(trendId, topicEncoded) {
+            const topic = decodeURIComponent(topicEncoded);
+
+            // Show loading
+            const editor = document.getElementById('postEditor');
+            const originalText = editor.value;
+            editor.value = '⏳ Poszt generálás folyamatban...';
+            editor.disabled = true;
+
+            try {
+                // Ha trendId "super_" előtaggal kezdődik, akkor super trend, de nincs direkt trend_id
+                // Helyette használjuk a topic-ot és generáljunk rá egyedi módon
+                // VAGY: keressük meg az első source-t és annak trend_id-ját
+
+                // Egyszerűsítve: generáljunk a topic alapján (nincs trend_id)
+                // Alternatíva: prompt alapú generálás
+
+                // Most csak simán betöltjük a szöveget
+                editor.value = `🔥 **${topic}**\n\nEz a téma most ${trendId.includes('super') ? 'több forrásban' : 'trending'}! Mit gondolsz róla?`;
+                editor.disabled = false;
+                updateCharCount();
+
+                // Ha akarod generálni AI-val, használd ezt:
+                // const response = await fetch('/api/generate', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ trend_id: trendId })
+                // });
+                // const data = await response.json();
+                // if (data.posts && data.posts.length > 0) {
+                //     editor.value = data.posts[0];
+                //     updateCharCount();
+                // }
+
+            } catch (error) {
+                console.error('Trend kiválasztás hiba:', error);
+                editor.value = originalText;
+                editor.disabled = false;
+                alert('Hiba: ' + error.message);
+            }
+        }
+
+        // ============================================================================
+        // RECENT POSTS INTEGRATION
+        // ============================================================================
+
+        async function loadRecentPosts() {
+            const container = document.getElementById('recentPostsContainer');
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><div class="animate-pulse">Betöltés...</div></div>';
+
+            try {
+                const response = await fetch('/api/recent-posts');
+                const data = await response.json();
+
+                if (data.posts && data.posts.length > 0) {
+                    container.innerHTML = data.posts.map(post => `
+                        <div class="p-3 rounded-lg bg-black/40 border border-white/10 hover:border-green-500/50 transition-all cursor-pointer group"
+                             onclick="loadPost('${encodeURIComponent(post.post_text)}')">
+                            <div class="text-xs text-gray-400 mb-1 line-clamp-3 group-hover:text-gray-300 transition-colors">
+                                ${post.post_text.substring(0, 100)}${post.post_text.length > 100 ? '...' : ''}
+                            </div>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-[10px] text-gray-600">${post.topic ? post.topic.substring(0, 30) : 'Poszt'}...</span>
+                                <span class="text-[10px] text-gray-600">${post.char_count} kar.</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">Nincs korábbi poszt</div>';
+                }
+            } catch (error) {
+                console.error('Recent posts hiba:', error);
+                container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm">Hiba a betöltéskor</div>';
+            }
+        }
+
+        function loadPost(postTextEncoded) {
+            const postText = decodeURIComponent(postTextEncoded);
+            document.getElementById('postEditor').value = postText;
+            updateCharCount();
+        }
+
+        // ============================================================================
+        // FACEBOOK CONNECTION (NANGO INTEGRATION)
+        // ============================================================================
+
+        async function checkFacebookConnection() {
+            const statusText = document.getElementById('fbStatusText');
+            const connectBtn = document.getElementById('fbConnectBtn');
+            const disconnectBtn = document.getElementById('fbDisconnectBtn');
+            const profileInfo = document.getElementById('fbProfileInfo');
+            const profileName = document.getElementById('fbProfileName');
+
+            try {
+                // Check if connection exists
+                const response = await fetch('/api/connection-status?provider=facebook');
+                const data = await response.json();
+
+                if (data.connected) {
+                    // Connected state
+                    statusText.textContent = 'Csatlakozva';
+                    statusText.classList.remove('text-gray-400');
+                    statusText.classList.add('text-green-400');
+                    connectBtn.classList.add('hidden');
+                    disconnectBtn.classList.remove('hidden');
+
+                    if (data.profile_name) {
+                        profileInfo.classList.remove('hidden');
+                        profileName.textContent = data.profile_name;
+                    }
+                } else {
+                    // Not connected state
+                    statusText.textContent = 'Nincs csatlakozva';
+                    statusText.classList.remove('text-green-400');
+                    statusText.classList.add('text-gray-400');
+                    connectBtn.classList.remove('hidden');
+                    disconnectBtn.classList.add('hidden');
+                    profileInfo.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Connection check error:', error);
+                statusText.textContent = 'Nem elérhető';
+                connectBtn.classList.remove('hidden');
+            }
+        }
+
+        async function connectFacebook() {
+            alert('🔵 Facebook OAuth Integráció\n\nA Nango OAuth flow-t itt kell bekötni:\n\n1. Nango SDK betöltése\n2. nango.auth("facebook-pages", "user_id")\n3. Connection ID mentése\n\nJelenleg ez a funkció placeholder állapotban van.\n\nDokumentáció: https://docs.nango.dev/');
+
+            // PLACEHOLDER - Itt kell implementálni a Nango OAuth flow-t
+            // const nango = new Nango({ publicKey: 'YOUR_NANGO_PUBLIC_KEY' });
+            // const result = await nango.auth('facebook-pages', 'user_123');
+            // await saveConnection(result.connectionId);
+        }
+
+        async function disconnectFacebook() {
+            if (!confirm('Biztosan leválasztod a Facebook kapcsolatot?')) return;
+
+            try {
+                const response = await fetch('/api/disconnect?provider=facebook', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    await checkFacebookConnection();
+                    alert('✅ Facebook kapcsolat leválasztva');
+                }
+            } catch (error) {
+                alert('Hiba a leválasztáskor: ' + error.message);
+            }
+        }
+
+        async function saveConnection(connectionId, profileName) {
+            try {
+                const response = await fetch('/api/save-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        provider: 'facebook',
+                        connection_id: connectionId,
+                        profile_name: profileName
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    await checkFacebookConnection();
+                }
+            } catch (error) {
+                console.error('Save connection error:', error);
+            }
+        }
+
+        // ============================================================================
+        // AUTO-LOAD ON PAGE LOAD
+        // ============================================================================
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Load draft from localStorage
+            const draftText = localStorage.getItem('draftPost');
+            const sourceUrl = localStorage.getItem('draftSourceUrl');
+            const textarea = document.getElementById('postEditor');
+
+            if (draftText) {
+                textarea.value = draftText;
+                updateCharCount();
+            }
+            if (sourceUrl) {
+                const link = document.getElementById('sourceLink');
+                link.href = sourceUrl;
+                link.classList.remove('hidden');
+            }
+            textarea.addEventListener('input', updateCharCount);
+
+            // Init palettes
+            initPalettes();
+
+            // Attach button event listeners (backup - inline onclick is primary)
+            const imgBtn = document.getElementById('genImageBtn');
+            const dlBtn = document.getElementById('downloadBtn');
+
+            if (imgBtn) {
+                console.log('✅ Image button found, attaching listener');
+                // Remove existing onclick to avoid double-firing
+                // imgBtn.addEventListener('click', generateImage);
+            } else {
+                console.error('❌ Image button NOT found!');
+            }
+
+            if (dlBtn) {
+                dlBtn.addEventListener('click', downloadImage);
+            }
+
+            // Add event listener to spoof button as backup
+            const spoofBtn = document.getElementById('spoofBtn');
+            if (spoofBtn) {
+                console.log('✅ Spoof button found, attaching listener');
+                spoofBtn.addEventListener('click', function() {
+                    console.log('🔘 Spoof button clicked via event listener');
+                    spoofImage();
+                });
+            } else {
+                console.error('❌ Spoof button NOT found!');
+            }
+
+            // Load Super Trends
+            await loadSuperTrends();
+
+            // Load Recent Posts
+            await loadRecentPosts();
+
+            // Check Facebook Connection
+            await checkFacebookConnection();
+        });
+
+        // ============================================================================
+        // FORRÁS LINK KEZELÉS
+        // ============================================================================
+        function setSourceLink(url, title = null) {
+            const link = document.getElementById('sourceLink');
+            const text = document.getElementById('sourceLinkText');
+
+            if (!url) {
+                // Ha nincs URL, disable-eljük a linket
+                link.href = '#';
+                link.classList.add('opacity-50', 'cursor-not-allowed');
+                link.onclick = (e) => e.preventDefault();
+                text.textContent = '📰 Forrás link (nincs beállítva)';
+                console.log('⚠️ No source URL provided');
+                return;
+            }
+
+            // Ha van URL, engedélyezzük
+            link.href = url;
+            link.classList.remove('opacity-50', 'cursor-not-allowed');
+            link.onclick = null;
+
+            if (title) {
+                text.textContent = title.length > 40 ? `📰 ${title.substring(0, 40)}...` : `📰 ${title}`;
+            } else {
+                text.textContent = '📰 Eredeti cikk megnyitása';
+            }
+            console.log('✅ Source link set:', url);
+        }
+
+        // ============================================================================
+        // IDEÁLIS POSZTOLÁSI IDŐ
+        // ============================================================================
+        function updateOptimalPostingTime() {
+            const now = new Date();
+            const hour = now.getHours();
+
+            // Facebook engagement data based on research:
+            // Best times: 9-10am, 12-1pm, 7-8pm
+            const optimalSlots = [
+                { hour: 9, minutes: 0 },   // Morning peak
+                { hour: 12, minutes: 30 }, // Lunch break
+                { hour: 19, minutes: 0 },  // Evening peak
+                { hour: 20, minutes: 30 }  // Late evening
+            ];
+
+            // Find the next optimal slot
+            let nextOptimal = null;
+            for (const slot of optimalSlots) {
+                if (hour < slot.hour || (hour === slot.hour && now.getMinutes() < slot.minutes)) {
+                    nextOptimal = slot;
+                    break;
+                }
+            }
+
+            // If no slot found today, use first slot tomorrow
+            if (!nextOptimal) {
+                nextOptimal = optimalSlots[0];
+            }
+
+            const timeStr = `${String(nextOptimal.hour).padStart(2, '0')}:${String(nextOptimal.minutes).padStart(2, '0')}`;
+            const headerEl = document.getElementById('optimalTimeHeader');
+            if (headerEl) {
+                headerEl.textContent = timeStr;
+            }
+        }
+
+        // ============================================================================
+        // SEO ELEMZÉS
+        // ============================================================================
+        function analyzeSEO() {
+            const text = document.getElementById('postEditor').value;
+            if (!text.trim()) return;
+
+            // SEO metricsek számítása
+            const charCount = text.length;
+            const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+            const wordCount = words.length;
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            const avgWordsPerSentence = sentences.length > 0 ? Math.round(wordCount / sentences.length) : 0;
+
+            const hashtagMatches = text.match(/#\w+/g);
+            const hashtagCount = hashtagMatches ? hashtagMatches.length : 0;
+
+            const emojiMatches = text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu);
+            const emojiCount = emojiMatches ? emojiMatches.length : 0;
+
+            // Kulcsszavak (3+ betű szavak, kisbetűsítve, egyediek)
+            const uniqueKeywords = [...new Set(words.filter(w => w.length >= 3).map(w => w.toLowerCase()))].slice(0, 5);
+
+            // SEO Score számítás (0-100)
+            let score = 50; // Alap
+
+            // Hashtagek (optimális: 1-5)
+            if (hashtagCount >= 1 && hashtagCount <= 5) score += 15;
+            else if (hashtagCount > 5) score += 5;
+
+            // Emojik (optimális: 1-4)
+            if (emojiCount >= 1 && emojiCount <= 4) score += 15;
+            else if (emojiCount > 4) score += 5;
+
+            // Szöveghossz (optimális: 50-300 karakter)
+            if (charCount >= 50 && charCount <= 300) score += 10;
+            else if (charCount > 300 && charCount <= 500) score += 5;
+
+            // Olvashatóság (optimális: 10-20 szó/mondat)
+            if (avgWordsPerSentence >= 10 && avgWordsPerSentence <= 20) score += 10;
+
+            score = Math.min(100, Math.max(0, score));
+
+            // UI frissítés
+            document.getElementById('seoPanel').classList.remove('hidden');
+            document.getElementById('seoScore').textContent = score;
+            document.getElementById('seoKeywords').textContent = uniqueKeywords.join(', ') || 'Nincs';
+            document.getElementById('seoHashtags').textContent = hashtagCount;
+            document.getElementById('seoEmojis').textContent = emojiCount;
+            document.getElementById('seoReadability').textContent = `${avgWordsPerSentence} szó/mondat`;
+
+            // Gauge szín
+            const gauge = document.getElementById('seoGauge');
+            const scoreElement = document.getElementById('seoScore');
+            const color = score >= 70 ? '#22c55e' : score >= 40 ? '#eab308' : '#ef4444';
+            gauge.style.setProperty('--gauge-color', color);
+            gauge.style.setProperty('--gauge-percent', `${score}%`);
+            scoreElement.style.color = color;
+
+            // Javaslatok
+            const suggestions = [];
+            if (hashtagCount === 0) suggestions.push('Adj hozzá 1-5 hashtagot (#)');
+            if (emojiCount === 0) suggestions.push('Használj 1-4 emojit');
+            if (charCount < 50) suggestions.push('Írj legalább 50 karaktert');
+            if (charCount > 500) suggestions.push('Rövidítsd 500 karakter alá');
+
+            const suggestionContainer = document.getElementById('seoSuggestions');
+            const suggestionList = document.getElementById('seoSuggestionList');
+            if (suggestions.length > 0) {
+                suggestionList.innerHTML = suggestions.map(s => `<li>${s}</li>`).join('');
+                suggestionContainer.classList.remove('hidden');
+            } else {
+                suggestionContainer.classList.add('hidden');
+            }
+        }
+
+        // Auto SEO on text change
+        let seoTimeout;
+        document.getElementById('postEditor').addEventListener('input', function() {
+            const text = this.value.trim();
+
+            // Show SEO panel if there's text
+            if (text.length > 0) {
+                document.getElementById('seoPanel').classList.remove('hidden');
+
+                if (document.getElementById('autoSeoCheck').checked) {
+                    clearTimeout(seoTimeout);
+                    seoTimeout = setTimeout(analyzeSEO, 500);
+                }
+            } else {
+                // Hide SEO panel if empty
+                document.getElementById('seoPanel').classList.add('hidden');
+            }
+        });
+
+        // ============================================================================
+        // BATCH MAPPA FELTÖLTÉS ÉS SPOOFING
+        // ============================================================================
+
+        function handleBatchUpload(event) {
+            const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) {
+                alert('Nem találtam képfájlokat a mappában!');
+                return;
+            }
+
+            batchFiles = files;
+            batchSpoofedFiles = [];
+            renderBatchPreview();
+        }
+
+        function handleBatchDrop(event) {
+            event.preventDefault();
+            const items = event.dataTransfer.items;
+            const files = [];
+
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i].webkitGetAsEntry();
+                if (item && item.isDirectory) {
+                    traverseDirectory(item, files);
+                } else if (items[i].kind === 'file') {
+                    const file = items[i].getAsFile();
+                    if (file.type.startsWith('image/')) {
+                        files.push(file);
+                    }
+                }
+            }
+
+            setTimeout(() => {
+                batchFiles = files;
+                batchSpoofedFiles = [];
+                renderBatchPreview();
+            }, 500);
+        }
+
+        function traverseDirectory(item, files) {
+            const reader = item.createReader();
+            reader.readEntries(entries => {
+                entries.forEach(entry => {
+                    if (entry.isFile) {
+                        entry.file(file => {
+                            if (file.type.startsWith('image/')) {
+                                files.push(file);
+                                renderBatchPreview();
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        function renderBatchPreview() {
+            const preview = document.getElementById('batchPreview');
+            const controls = document.getElementById('batchControls');
+            const count = document.getElementById('batchCount');
+
+            count.textContent = `${batchFiles.length} kép`;
+
+            if (batchFiles.length === 0) {
+                preview.classList.add('hidden');
+                controls.classList.add('hidden');
+                return;
+            }
+
+            preview.classList.remove('hidden');
+            controls.classList.remove('hidden');
+
+            preview.innerHTML = batchFiles.map((file, index) => `
+                <div class="batch-item" id="batch-${index}">
+                    <img src="${URL.createObjectURL(file)}" alt="${file.name}">
+                    <div class="status-badge bg-gray-600 text-white">⏳</div>
+                </div>
+            `).join('');
+        }
+
+        async function processBatchSpoof() {
+            if (batchFiles.length === 0) return;
+
+            const btn = document.getElementById('batchSpoofBtn');
+            const progress = document.getElementById('batchProgress');
+            const progressBar = document.getElementById('batchProgressBar');
+            const progressText = document.getElementById('batchProgressText');
+            const device = document.getElementById('batchDevice').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Feldolgozás...';
+            progress.classList.remove('hidden');
+            batchSpoofedFiles = [];
+
+            for (let i = 0; i < batchFiles.length; i++) {
+                const file = batchFiles[i];
+                const itemEl = document.getElementById(`batch-${i}`);
+                const badge = itemEl.querySelector('.status-badge');
+
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file, file.name);
+                    formData.append('device', device === 'random' ? 'random' : device);
+
+                    const response = await fetch('/api/spoof-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        batchSpoofedFiles.push({
+                            name: `spoofed_${file.name}`,
+                            blob: blob
+                        });
+                        badge.className = 'status-badge bg-green-600 text-white';
+                        badge.textContent = '✓';
+                    } else {
+                        badge.className = 'status-badge bg-red-600 text-white';
+                        badge.textContent = '✗';
+                    }
+                } catch (error) {
+                    badge.className = 'status-badge bg-red-600 text-white';
+                    badge.textContent = '✗';
+                }
+
+                const percent = Math.round(((i + 1) / batchFiles.length) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressText.textContent = `${i + 1} / ${batchFiles.length}`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '🚀 Mind Spoofing';
+            document.getElementById('batchDownloadBtn').classList.remove('hidden');
+        }
+
+        async function downloadBatchZip() {
+            if (batchSpoofedFiles.length === 0) return;
+
+            const btn = document.getElementById('batchDownloadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ ZIP készítés...';
+
+            try {
+                // JSZip betöltése dinamikusan
+                if (!window.JSZip) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+                    document.head.appendChild(script);
+                    await new Promise(resolve => script.onload = resolve);
+                }
+
+                const zip = new JSZip();
+                batchSpoofedFiles.forEach(file => {
+                    zip.file(file.name, file.blob);
+                });
+
+                const content = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `spoofed_images_${Date.now()}.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                alert('ZIP létrehozási hiba: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📥 ZIP Letöltés';
+            }
+        }
+
+        // ============================================================================
+        // CIKKBŐL POSZT GENERÁTOR - ÚJ FUNKCIÓK
+        // ============================================================================
+
+        let selectedPlatformStyle = 'facebook';
+        let selectedOutputType = 'post';
+
+        function selectOutputType(type) {
+            selectedOutputType = type;
+
+            const postBtn = document.getElementById('outputTypePost');
+            const scriptBtn = document.getElementById('outputTypeScript');
+            const postPlatforms = document.getElementById('postPlatforms');
+            const scriptPlatforms = document.getElementById('scriptPlatforms');
+
+            if (type === 'post') {
+                // POSZT kiválasztva
+                postBtn.className = 'output-type-btn p-4 rounded-xl bg-gradient-to-br from-blue-600/30 to-purple-600/30 border-2 border-blue-500 text-white text-sm font-bold transition-all cursor-pointer flex flex-col items-center gap-2';
+                scriptBtn.className = 'output-type-btn p-4 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm font-bold transition-all hover:bg-white/10 cursor-pointer flex flex-col items-center gap-2';
+                postPlatforms.classList.remove('hidden');
+                scriptPlatforms.classList.add('hidden');
+                // Alapértelmezett platform
+                selectPlatformStyle('facebook');
+            } else {
+                // SCRIPT kiválasztva
+                scriptBtn.className = 'output-type-btn p-4 rounded-xl bg-gradient-to-br from-pink-600/30 to-purple-600/30 border-2 border-pink-500 text-white text-sm font-bold transition-all cursor-pointer flex flex-col items-center gap-2';
+                postBtn.className = 'output-type-btn p-4 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm font-bold transition-all hover:bg-white/10 cursor-pointer flex flex-col items-center gap-2';
+                postPlatforms.classList.add('hidden');
+                scriptPlatforms.classList.remove('hidden');
+                // Alapértelmezett platform
+                selectPlatformStyle('tiktok');
+            }
+        }
+
+        function switchMainTab(tab) {
+            const editorTab = document.getElementById('tabContentEditor');
+            const fromUrlTab = document.getElementById('tabContentFromUrl');
+            const editorBtn = document.getElementById('mainTabEditor');
+            const fromUrlBtn = document.getElementById('mainTabFromUrl');
+
+            if (tab === 'editor') {
+                editorTab.classList.remove('hidden');
+                fromUrlTab.classList.add('hidden');
+                editorBtn.className = 'flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-lg';
+                fromUrlBtn.className = 'flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10';
+            } else {
+                editorTab.classList.add('hidden');
+                fromUrlTab.classList.remove('hidden');
+                fromUrlBtn.className = 'flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg';
+                editorBtn.className = 'flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-all bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10';
+            }
+        }
+
+        function selectPlatformStyle(style) {
+            selectedPlatformStyle = style;
+
+            // Reset all buttons
+            document.querySelectorAll('.platform-style-btn').forEach(btn => {
+                btn.className = 'platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex items-center justify-center gap-2';
+                if (btn.querySelector('span:last-child') && btn.querySelector('span:last-child').textContent.includes('TikTok')) {
+                    btn.className = 'platform-style-btn p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-xs font-bold transition-all hover:bg-white/10 flex flex-col items-center gap-1';
+                }
+            });
+
+            // Highlight selected
+            const selectedBtn = document.getElementById(`styleBtn_${style}`);
+            if (selectedBtn) {
+                const colors = {
+                    facebook: { bg: 'bg-blue-600/20', border: 'border-blue-500', text: 'text-blue-400' },
+                    linkedin: { bg: 'bg-sky-600/20', border: 'border-sky-500', text: 'text-sky-400' },
+                    instagram: { bg: 'bg-pink-600/20', border: 'border-pink-500', text: 'text-pink-400' },
+                    twitter: { bg: 'bg-gray-600/20', border: 'border-gray-500', text: 'text-gray-300' },
+                    tiktok: { bg: 'bg-black', border: 'border-pink-500', text: 'text-white' },
+                    reels: { bg: 'bg-purple-600/20', border: 'border-purple-500', text: 'text-purple-400' },
+                    shorts: { bg: 'bg-red-600/20', border: 'border-red-500', text: 'text-red-400' }
+                };
+                const c = colors[style] || colors.facebook;
+
+                if (['tiktok', 'reels', 'shorts'].includes(style)) {
+                    selectedBtn.className = `platform-style-btn p-3 rounded-xl ${c.bg} border-2 ${c.border} ${c.text} text-xs font-bold transition-all flex flex-col items-center gap-1`;
+                } else {
+                    selectedBtn.className = `platform-style-btn p-3 rounded-xl ${c.bg} border-2 ${c.border} ${c.text} text-xs font-bold transition-all hover:${c.bg.replace('/20', '/30')} flex items-center justify-center gap-2`;
+                }
+            }
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('articleUrl').value = text;
+            } catch (error) {
+                alert('Nem sikerült a vágólapról olvasni. Kérlek, manuálisan illeszd be.');
+            }
+        }
+
+        async function generateFromUrl() {
+            const url = document.getElementById('articleUrl').value.trim();
+            const lang = document.getElementById('articleLang').value;
+            const style = selectedPlatformStyle;
+
+            if (!url) {
+                alert('Kérlek, add meg a cikk URL-jét!');
+                return;
+            }
+
+            // URL validálás
+            try {
+                new URL(url);
+            } catch {
+                alert('Kérlek, adj meg egy érvényes URL-t!');
+                return;
+            }
+
+            const btn = document.getElementById('generateFromUrlBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+                <div class="relative bg-transparent h-full w-full rounded-xl px-6 py-4 flex items-center justify-center gap-3">
+                    <span class="text-2xl animate-spin">⏳</span>
+                    <span class="text-lg font-black text-white tracking-wider">GENERÁLÁS...</span>
+                </div>
+            `;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/generate-from-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: url,
+                        language: lang,
+                        style: style
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show result
+                    document.getElementById('fromUrlResult').classList.remove('hidden');
+                    document.getElementById('generatedFromUrlContent').textContent = data.content;
+
+                    // Store source URL
+                    currentSourceUrl = url;
+                    localStorage.setItem('draftSourceUrl', url);
+                } else {
+                    throw new Error(data.error || 'Ismeretlen hiba');
+                }
+            } catch (error) {
+                alert('Hiba a generálás során: ' + error.message);
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        function copyGeneratedContent() {
+            const content = document.getElementById('generatedFromUrlContent').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('Tartalom vágólapra másolva!');
+            }).catch(() => {
+                alert('Nem sikerült a másolás.');
+            });
+        }
+
+        function sendToEditor() {
+            const content = document.getElementById('generatedFromUrlContent').textContent;
+            const sourceUrl = document.getElementById('articleUrl').value.trim();
+
+            // Switch to editor tab
+            switchMainTab('editor');
+
+            // Set content in editor
+            const editor = document.getElementById('postEditor');
+            editor.value = content;
+            updateCharCount();
+
+            // Set source link
+            if (sourceUrl) {
+                currentSourceUrl = sourceUrl;
+                localStorage.setItem('draftSourceUrl', sourceUrl);
+                setSourceLink(sourceUrl);
+            }
+
+            // Save draft
+            localStorage.setItem('draftPost', content);
+
+            // Trigger SEO analysis
+            document.getElementById('seoPanel').classList.remove('hidden');
+            setTimeout(analyzeSEO, 100);
+
+            alert('Tartalom áthelyezve a szerkesztőbe!');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="hu" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | TrendMaster</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#ef4444">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TrendMaster">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            DEFAULT: '#ef4444',
+                            dark: '#991b1b',
+                        },
+                        dark: {
+                            bg: '#0a0a0a',
+                            card: '#121212',
+                            border: '#2a2a2a'
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ef4444;
+        }
+
+        /* Glass Effect Utilities */
+        .glass {
+            background: rgba(18, 18, 18, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        .glass-card:hover {
+            border-color: rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+        }
+
+        /* Ambient Background */
+        .ambient-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+            background-color: #050505;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: blob 10s infinite alternate;
+        }
+    </style>
+</head>
+<body class="bg-dark-bg text-gray-100 min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white">
+
+    <div class="ambient-light">
+        <div class="orb w-96 h-96 bg-red-900/30 top-0 left-0"></div>
+        <div class="orb w-96 h-96 bg-orange-900/20 bottom-0 right-0 animation-delay-2000"></div>
+        <div class="orb w-64 h-64 bg-purple-900/20 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+    </div>
+
+    <header class="glass sticky top-0 z-50 border-b border-white/5">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <a href="/" class="group flex items-center gap-3 transition-transform hover:scale-105">
+                    <div class="relative">
+                        <span class="text-3xl relative z-10 group-hover:animate-bounce block">🔥</span>
+                        <div class="absolute inset-0 bg-red-500 blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-500"></div>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-black bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent tracking-tight">
+                            Trend<span class="text-red-500">Master</span>
+                        </h1>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold">Intelligence Dashboard</p>
+                    </div>
+                </a>
+
+                <div class="flex items-center gap-4">
+                    <div class="relative group hidden md:block">
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-orange-500 rounded-full opacity-0 group-hover:opacity-30 transition duration-500 blur"></div>
+                        <div class="relative flex items-center">
+                            <input type="text" id="searchInput" placeholder="Keresés a trendekben..."
+                                class="bg-black/50 border border-white/10 text-gray-200 px-5 py-2.5 rounded-full w-64 focus:w-80 transition-all focus:outline-none focus:border-red-500/50 placeholder-gray-600 text-sm"
+                                onkeyup="handleSearchKeyup(event)" />
+                            <span class="absolute right-4 text-gray-600 group-focus-within:text-red-400 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <a href="/editor" class="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-sm font-medium rounded-full group bg-gradient-to-br from-blue-500 to-cyan-500 group-hover:from-blue-500 group-hover:to-cyan-500 hover:text-white text-white shadow-lg shadow-blue-500/20">
+                            <span class="relative px-3 md:px-5 py-2 transition-all ease-in duration-75 bg-gray-900 rounded-full group-hover:bg-opacity-0 flex items-center gap-2">
+                                <span>✨</span> <span class="hidden md:inline">Editor</span>
+                            </span>
+                        </a>
+
+                        <button onclick="refreshTrends()" id="refreshBtn"
+                            class="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-sm font-medium rounded-full group bg-gradient-to-br from-red-500 to-orange-500 hover:text-white text-white shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all">
+                            <span class="relative px-3 md:px-5 py-2 transition-all ease-in duration-75 bg-gray-900/50 rounded-full group-hover:bg-opacity-0 flex items-center gap-2">
+                                <svg id="refreshIcon" class="w-4 h-4 transition-transform duration-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                <span id="refreshText" class="hidden md:inline">Frissítés</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-10 flex-grow relative z-10">
+        
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+            <div class="glass-card p-5 rounded-2xl text-center group hover:-translate-y-1 transition-transform duration-300">
+                <div class="text-3xl font-black bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent" id="totalTrends">--</div>
+                <div class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-2 group-hover:text-gray-300 transition-colors">Aktív Trendek</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl text-center group hover:-translate-y-1 transition-transform duration-300 border-l-2 border-red-500/20">
+                <div class="text-3xl font-black bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent" id="totalPosts">--</div>
+                <div class="text-[10px] text-red-500/70 uppercase tracking-widest font-bold mt-2 group-hover:text-red-400 transition-colors">Generált Posztok</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl text-center group hover:-translate-y-1 transition-transform duration-300">
+                <div class="text-3xl font-black bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent" id="totalNews">--</div>
+                <div class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-2 group-hover:text-gray-300 transition-colors">Hírek</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl text-center group hover:-translate-y-1 transition-transform duration-300 border-l-2 border-blue-500/20">
+                <div class="text-2xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent" id="optimalTime">--:--</div>
+                <div class="text-[10px] text-blue-500/70 uppercase tracking-widest font-bold mt-2 group-hover:text-blue-400 transition-colors">Ideális Posztolási Idő</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl text-center group hover:-translate-y-1 transition-transform duration-300">
+                <div class="text-sm font-bold text-yellow-500/90 pt-2" id="lastUpdate">--</div>
+                <div class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-3">Utolsó frissítés</div>
+            </div>
+        </div>
+
+        <div id="loadingState" class="flex flex-col items-center justify-center py-32">
+            <div class="relative w-24 h-24">
+                <div class="absolute inset-0 rounded-full border-t-2 border-r-2 border-red-500 animate-spin"></div>
+                <div class="absolute inset-3 rounded-full border-b-2 border-l-2 border-orange-500 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-2xl animate-pulse">🔥</span>
+                </div>
+            </div>
+            <p class="text-gray-500 mt-6 font-mono text-sm tracking-wider animate-pulse">ADATOK SZINKRONIZÁLÁSA...</p>
+        </div>
+
+        <div id="trendsContainer" class="hidden space-y-16">
+
+            <section id="superTrendsSection" class="hidden relative">
+                <div class="absolute -inset-4 bg-gradient-to-r from-yellow-500/10 via-red-500/5 to-transparent blur-2xl -z-10 rounded-full"></div>
+                
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="relative">
+                        <span class="text-4xl block animate-bounce">⭐</span>
+                        <div class="absolute inset-0 bg-yellow-400 blur opacity-40"></div>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-black text-white tracking-tight">SZUPER<span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">TRENDEK</span></h2>
+                        <p class="text-gray-400 text-sm mt-1">Globális témák, amelyek uralják a médiát</p>
+                    </div>
+                </div>
+                
+                <div id="superTrends" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </section>
+
+            <div class="space-y-16">
+                <section>
+                    <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl bg-gray-800 rounded-lg p-1.5">🇭🇺</span>
+                            <h2 class="text-xl font-bold text-gray-200">Google News <span class="text-gray-500 text-sm font-normal ml-2">Magyarország</span></h2>
+                        </div>
+                        <span class="text-xs font-mono text-gray-600">REAL-TIME</span>
+                    </div>
+                    <div id="google_hu" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </section>
+
+                <section>
+                    <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl bg-red-900/30 rounded-lg p-1.5">▶️</span>
+                            <h2 class="text-xl font-bold text-gray-200">YouTube <span class="text-gray-500 text-sm font-normal ml-2">Magyarország</span></h2>
+                        </div>
+                    </div>
+                    <div id="youtube_hu" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </section>
+
+                <section>
+                    <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl bg-gray-800 rounded-lg p-1.5">🇬🇧</span>
+                            <h2 class="text-xl font-bold text-gray-200">Google News <span class="text-gray-500 text-sm font-normal ml-2">United Kingdom</span></h2>
+                        </div>
+                    </div>
+                    <div id="google_gb" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </section>
+
+                <section>
+                    <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl bg-gray-800 rounded-lg p-1.5">🇺🇸</span>
+                            <h2 class="text-xl font-bold text-gray-200">Google News <span class="text-gray-500 text-sm font-normal ml-2">USA</span></h2>
+                        </div>
+                    </div>
+                    <div id="google_us" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </section>
+
+                <!-- RSS News Articles Section -->
+                <section>
+                    <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl bg-gray-800 rounded-lg p-1.5">📰</span>
+                            <h2 class="text-xl font-bold text-gray-200">RSS News <span class="text-gray-500 text-sm font-normal ml-2">Összegyűjtött Hírek</span></h2>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 font-mono">RSS Feed</span>
+                    </div>
+                    <div id="news" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <p class="text-gray-500 text-center py-8 col-span-full">Betöltés...</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <div id="postsModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="closeModal()"></div>
+        
+        <div class="bg-dark-card border border-white/10 rounded-3xl max-w-5xl w-[95%] max-h-[90vh] flex flex-col shadow-2xl shadow-red-900/20 transform scale-95 transition-transform duration-300 relative z-10 overflow-hidden" id="modalContent">
+            
+            <div class="p-6 border-b border-white/5 flex justify-between items-start bg-black/20">
+                <div>
+                    <h3 class="text-2xl font-bold text-white tracking-tight" id="modalTrendTitle">Téma Címe</h3>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span class="text-xs font-mono text-gray-400 uppercase tracking-widest" id="modalTrendSource">SOURCE</span>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white p-2 hover:bg-white/10 rounded-full transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-8 overflow-y-auto custom-scrollbar bg-gradient-to-b from-dark-card to-black">
+                
+                <div id="modalLoading" class="text-center py-20">
+                    <div class="relative inline-flex justify-center items-center mb-8">
+                        <div class="w-32 h-32 border-2 border-red-500/20 rounded-full animate-[spin_10s_linear_infinite]"></div>
+                        <div class="absolute w-24 h-24 border-t-2 border-red-500 rounded-full animate-spin"></div>
+                        <div class="absolute w-16 h-16 bg-red-600/20 rounded-full animate-pulse blur-xl"></div>
+                        <div class="absolute text-3xl">✨</div>
+                    </div>
+                    <h4 class="text-xl font-bold text-white mb-2">AI Generálás Folyamatban</h4>
+                    <p class="text-gray-500 text-sm font-mono">A neurális hálózat írja a posztokat...</p>
+                </div>
+
+                <div id="modalPosts" class="hidden grid gap-6">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let trendsData = {};
+
+        // Load trends on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTrends();
+            loadSuperTrends();
+            loadNews();
+        });
+
+        async function loadTrends() {
+            try {
+                const response = await fetch('/api/trends');
+                const data = await response.json();
+
+                trendsData = data.trends;
+
+                // Update stats with animation
+                animateValue('totalTrends', 0, data.stats.total_trends, 1000);
+                animateValue('totalPosts', 0, data.stats.total_posts, 1000);
+                animateValue('totalNews', 0, data.stats.total_news, 1000);
+
+                if (data.stats.last_fetch) {
+                    const date = new Date(data.stats.last_fetch);
+                    document.getElementById('lastUpdate').textContent = date.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
+                } else {
+                    document.getElementById('lastUpdate').textContent = '--:--';
+                }
+
+                // Calculate and display optimal posting time
+                updateOptimalPostingTime();
+                // Refresh every 30 minutes
+                setInterval(updateOptimalPostingTime, 30 * 60 * 1000);
+
+                // Render trends
+                renderTrends();
+
+                // Hide loading, show content
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('trendsContainer').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error loading trends:', error);
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="text-red-400 text-xl font-bold">⚠️ Hiba a kapcsolatban</div>
+                    <p class="text-gray-500 mt-2 text-sm">Nem sikerült letölteni az adatokat.</p>
+                `;
+            }
+        }
+
+        function renderTrends() {
+            console.log('🔧 renderTrends() called');
+            // Exclude 'news' because it has its own dedicated renderNews() function
+            const sources = ['google_hu', 'youtube_hu', 'google_gb', 'youtube_gb', 'google_us', 'youtube_us'];
+
+            sources.forEach(source => {
+                const container = document.getElementById(source);
+                if (!container) return;
+
+                const trends = trendsData[source] || [];
+
+                if (trends.length === 0) {
+                    container.innerHTML = '<p class="text-gray-600 col-span-full text-center py-8 italic">Nincs elérhető trend ebben a kategóriában.</p>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                trends.forEach((trend, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-card rounded-2xl p-6 group cursor-pointer relative overflow-hidden transition-all duration-300 hover:-translate-y-1';
+
+                    const bgDiv = document.createElement('div');
+                    bgDiv.className = 'absolute -right-10 -top-10 w-32 h-32 bg-gradient-to-br from-red-500/10 to-transparent rounded-full blur-2xl group-hover:bg-red-500/20 transition-all';
+
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'relative z-10';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-start mb-4';
+                    header.innerHTML = `
+                        <span class="bg-white/5 border border-white/10 text-gray-300 text-[10px] font-bold px-2 py-1 rounded backdrop-blur-md">
+                            #${idx + 1}
+                        </span>
+                        <div class="flex items-center gap-1 text-xs font-mono text-gray-500">
+                            <span>${trend.relevance_score ? trend.relevance_score.toFixed(0) : '-'}</span>
+                            <span class="text-red-500">pts</span>
+                        </div>
+                    `;
+
+                    const title = document.createElement('h3');
+                    title.className = 'text-lg font-bold text-gray-100 mb-3 leading-snug group-hover:text-red-400 transition-colors line-clamp-2 min-h-[3.5rem]';
+                    title.textContent = trend.topic || trend.title || 'No title';
+
+                    const meta = document.createElement('div');
+                    if (trend.metadata) {
+                        meta.className = 'text-xs text-gray-500 mb-5 line-clamp-1 font-mono border-t border-white/5 pt-2';
+                        meta.textContent = trend.metadata;
+                    } else if (trend.description) {
+                        meta.className = 'text-xs text-gray-500 mb-5 line-clamp-2 font-mono border-t border-white/5 pt-2';
+                        meta.textContent = trend.description;
+                    } else {
+                        meta.className = 'mb-5 pt-2 border-t border-white/5';
+                    }
+
+                    const button = document.createElement('button');
+                    button.className = 'w-full py-3 rounded-xl bg-gray-800 hover:bg-red-600 text-gray-300 hover:text-white text-sm font-bold transition-all border border-white/5 hover:border-red-500/50 flex items-center justify-center gap-2 group-hover:shadow-lg hover:shadow-red-900/40';
+                    button.innerHTML = '<span class="text-lg">✨</span> Generálás';
+                    button.dataset.trendId = trend.id;
+                    button.dataset.topic = trend.topic || trend.title || 'No title';
+                    button.dataset.source = source;
+                    button.addEventListener('click', function() {
+                        generatePosts(this.dataset.trendId, this.dataset.topic, this.dataset.source);
+                    });
+
+                    contentDiv.appendChild(header);
+                    contentDiv.appendChild(title);
+                    contentDiv.appendChild(meta);
+                    contentDiv.appendChild(button);
+
+                    card.appendChild(bgDiv);
+                    card.appendChild(contentDiv);
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        // Super Trends Rendering with Gold Theme
+        function renderSuperTrends(superTrends) {
+            const container = document.getElementById('superTrends');
+            container.innerHTML = '';
+
+            const sourceIcons = {
+                'google_hu': '🇭🇺', 'google_gb': '🇬🇧', 'google_us': '🇺🇸',
+                'youtube_hu': '📺', 'youtube_gb': '📺', 'youtube_us': '📺'
+            };
+
+            superTrends.forEach((trend, idx) => {
+                const card = document.createElement('div');
+                card.className = 'relative bg-gradient-to-br from-yellow-900/20 to-red-900/10 border border-yellow-500/30 rounded-3xl p-8 hover:border-yellow-400/60 transition-all duration-300 group hover:-translate-y-1 shadow-2xl shadow-yellow-900/10';
+
+                const bgDiv = document.createElement('div');
+                bgDiv.className = 'absolute inset-0 bg-[url(\'https://grainy-gradients.vercel.app/noise.svg\')] opacity-10';
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'relative z-10';
+
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-start mb-6';
+                header.innerHTML = `
+                    <div class="flex gap-2">
+                        <span class="bg-yellow-500 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg shadow-yellow-500/20">
+                            ${trend.source_count} Forrás
+                        </span>
+                    </div>
+                    <span class="text-2xl animate-pulse">🔥</span>
+                `;
+
+                const title = document.createElement('h3');
+                title.className = 'text-2xl font-black text-white mb-4 leading-tight group-hover:text-yellow-200 transition-colors';
+                title.textContent = trend.topic;
+
+                const sourceLabelsDiv = document.createElement('div');
+                sourceLabelsDiv.className = 'flex flex-wrap gap-2 mb-6 text-lg';
+                sourceLabelsDiv.textContent = trend.sources.map(s => sourceIcons[s] || '🌍').join(' ');
+
+                const button = document.createElement('button');
+                button.className = 'w-full py-4 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-black text-sm uppercase tracking-widest transition-all transform hover:scale-[1.02] shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2';
+                button.innerHTML = '<span>⚡</span> Azonnali Generálás';
+                button.dataset.topic = trend.topic;
+                button.dataset.trendId = trend.trends[0].id;
+                button.addEventListener('click', function() {
+                    generatePostsFromSuperTrend(this.dataset.topic, this.dataset.trendId);
+                });
+
+                contentDiv.appendChild(header);
+                contentDiv.appendChild(title);
+                contentDiv.appendChild(sourceLabelsDiv);
+                contentDiv.appendChild(button);
+
+                card.appendChild(bgDiv);
+                card.appendChild(contentDiv);
+                container.appendChild(card);
+            });
+        }
+
+        let currentSourceUrl = null;  // Store source URL for modal
+
+        async function generatePosts(trendId, topic, source) {
+            const modal = document.getElementById('postsModal');
+            const content = document.getElementById('modalContent');
+            const title = document.getElementById('modalTrendTitle');
+            const sourceBadge = document.getElementById('modalTrendSource');
+
+            title.textContent = topic;
+            sourceBadge.textContent = source.toUpperCase();
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+
+            document.getElementById('modalLoading').classList.remove('hidden');
+            document.getElementById('modalPosts').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trend_id: trendId })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                // Store source URL for use in selectAndEdit
+                currentSourceUrl = data.source_url || null;
+                console.log('📎 Source URL:', currentSourceUrl);
+
+                document.getElementById('modalLoading').classList.add('hidden');
+                const container = document.getElementById('modalPosts');
+                container.classList.remove('hidden');
+
+                // Clear container
+                container.innerHTML = '';
+
+                // Create post cards programmatically to avoid escaping issues
+                data.posts.forEach((post, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 hover:bg-white/10 transition-all group';
+
+                    // Header
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-center mb-4';
+                    header.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-gray-700 text-xs flex items-center justify-center font-bold text-white">${idx + 1}</span>
+                            <span class="text-gray-400 text-xs font-mono tracking-wide">VARIÁCIÓ</span>
+                        </div>
+                        <span class="text-xs text-gray-500 font-mono">${post.length} karakter</span>
+                    `;
+
+                    // Post text
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'text-sm text-gray-200 leading-relaxed whitespace-pre-wrap mb-6 font-sans p-4 bg-black/30 rounded-xl border border-white/5';
+                    textDiv.textContent = post;
+
+                    // Edit button
+                    const button = document.createElement('button');
+                    button.className = 'w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-all shadow-lg shadow-red-900/20 flex items-center justify-center gap-2 transform group-hover:translate-y-[-2px]';
+                    button.innerHTML = '<span>✏️</span> Szerkesztés';
+                    button.dataset.postText = post;
+                    button.addEventListener('click', function() {
+                        selectAndEdit(this.dataset.postText);
+                    });
+
+                    // Assemble card
+                    card.appendChild(header);
+                    card.appendChild(textDiv);
+                    card.appendChild(button);
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('modalLoading').innerHTML = `<div class="text-red-400 font-bold">❌ Hiba történt</div>`;
+            }
+        }
+
+        function selectAndEdit(text) {
+            localStorage.setItem('draftPost', text);
+
+            // Save source URL if available
+            if (currentSourceUrl) {
+                localStorage.setItem('draftSourceUrl', currentSourceUrl);
+                console.log('💾 Saved source URL to localStorage:', currentSourceUrl);
+            } else {
+                localStorage.removeItem('draftSourceUrl');
+                console.log('🗑️ No source URL to save');
+            }
+
+            window.location.href = '/editor';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('postsModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // Helper: Number Animation
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = document.getElementById(id);
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const timer = setInterval(function() {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, stepTime);
+        }
+
+        // Optimal Posting Time Calculator
+        function updateOptimalPostingTime() {
+            const now = new Date();
+            const hour = now.getHours();
+            const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+            // Facebook engagement data based on research:
+            // Best times: 9-10am, 12-1pm, 7-8pm
+            // Best days: Tuesday, Wednesday, Thursday
+            const optimalSlots = [
+                { hour: 9, minutes: 0 },   // Morning peak
+                { hour: 12, minutes: 30 }, // Lunch break
+                { hour: 19, minutes: 0 },  // Evening peak
+                { hour: 20, minutes: 30 }  // Late evening
+            ];
+
+            // Find the next optimal slot
+            let nextOptimal = null;
+            for (const slot of optimalSlots) {
+                if (hour < slot.hour || (hour === slot.hour && now.getMinutes() < slot.minutes)) {
+                    nextOptimal = slot;
+                    break;
+                }
+            }
+
+            // If no slot found today, use first slot tomorrow
+            if (!nextOptimal) {
+                nextOptimal = optimalSlots[0];
+            }
+
+            const timeStr = `${String(nextOptimal.hour).padStart(2, '0')}:${String(nextOptimal.minutes).padStart(2, '0')}`;
+            document.getElementById('optimalTime').textContent = timeStr;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        function escapeForJs(text) {
+            return text.replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+        }
+
+        // Super Trends (Copy from original but styled above)
+        async function loadSuperTrends() {
+            try {
+                const response = await fetch('/api/super-trends');
+                const data = await response.json();
+                if (data.super_trends && data.super_trends.length > 0) {
+                    document.getElementById('superTrendsSection').classList.remove('hidden');
+                    renderSuperTrends(data.super_trends);
+                }
+            } catch(e) { console.error(e); }
+        }
+        async function generatePostsFromSuperTrend(topic, trendId) {
+            await generatePosts(trendId, topic, 'super_trend');
+        }
+
+        // News Loading and Rendering
+        async function loadNews() {
+            console.log('🔍 loadNews() HÍVVA!');
+            try {
+                console.log('📡 Fetching /api/news...');
+                const response = await fetch('/api/news');
+                console.log('📥 Response status:', response.status, response.statusText);
+
+                const data = await response.json();
+                console.log('📦 News data:', data);
+                console.log('📊 News count:', data.news ? data.news.length : 0);
+
+                if (data.news && data.news.length > 0) {
+                    console.log('✅ Calling renderNews() with', data.news.length, 'items');
+                    renderNews(data.news);
+                } else {
+                    console.log('⚠️ No news items found');
+                    document.getElementById('news').innerHTML = '<p class="text-gray-500 text-center py-8 col-span-full">Nincs elérhető hír</p>';
+                }
+            } catch(e) {
+                console.error('❌ News loading error:', e);
+                console.error('Error stack:', e.stack);
+                document.getElementById('news').innerHTML = '<p class="text-red-400 text-center py-8 col-span-full">Hiba a hírek betöltésekor</p>';
+            }
+        }
+
+        function renderNews(newsItems) {
+            console.log('🎨 renderNews() HÍVVA!', newsItems.length, 'items');
+            const container = document.getElementById('news');
+            console.log('📍 Container element:', container ? 'FOUND' : 'NOT FOUND');
+
+            if (!container) {
+                console.error('❌ News container not found!');
+                return;
+            }
+
+            // Clear existing content
+            console.log('🧹 Clearing container...');
+            container.innerHTML = '';
+
+            // Create cards with proper event listeners instead of onclick
+            console.log('🔨 Creating', newsItems.length, 'cards...');
+            newsItems.forEach((article, idx) => {
+                console.log(`  📝 Card ${idx + 1}:`, article.id, article.title);
+                const card = document.createElement('div');
+                card.className = 'bg-white/5 border border-white/5 rounded-2xl p-5 hover:bg-white/10 transition-all group cursor-pointer';
+
+                // Create elements safely without template literals
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'flex items-start justify-between mb-3';
+
+                const sourceSpan = document.createElement('span');
+                sourceSpan.className = 'text-xs px-2 py-1 rounded bg-blue-500/10 text-blue-400 font-mono';
+                sourceSpan.textContent = article.source || '';
+                headerDiv.appendChild(sourceSpan);
+
+                if (article.category) {
+                    const categorySpan = document.createElement('span');
+                    categorySpan.className = 'text-xs text-gray-500';
+                    categorySpan.textContent = article.category;
+                    headerDiv.appendChild(categorySpan);
+                }
+
+                const titleH3 = document.createElement('h3');
+                titleH3.className = 'text-base font-bold text-white mb-2 line-clamp-2';
+                titleH3.textContent = article.title || '';
+
+                const descP = document.createElement('p');
+                if (article.description) {
+                    descP.className = 'text-sm text-gray-400 mb-4 line-clamp-3';
+                    descP.textContent = article.description;
+                }
+
+                const button = document.createElement('button');
+                button.className = 'news-generate-btn w-full py-2 px-4 rounded-xl bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white text-sm font-bold transition-all shadow-lg shadow-red-900/30 flex items-center justify-center gap-2';
+                button.innerHTML = '<span>✨</span> Poszt Készítése';
+
+                // Store data in dataset for safety
+                button.dataset.newsId = article.id;
+                button.dataset.newsTitle = article.title;
+                console.log(`  🔘 Button created for:`, article.id, article.title);
+
+                // Add event listener
+                button.addEventListener('click', function() {
+                    const newsId = this.dataset.newsId;
+                    const newsTitle = this.dataset.newsTitle;
+                    console.log('🔥 NEWS BUTTON CLICKED!', { newsId, newsTitle });
+                    generatePostsFromNews(newsId, newsTitle);
+                });
+                console.log(`  ✅ Event listener attached to button`);
+
+                // Assemble card
+                card.appendChild(headerDiv);
+                card.appendChild(titleH3);
+                if (article.description) {
+                    card.appendChild(descP);
+                }
+                card.appendChild(button);
+
+                container.appendChild(card);
+                console.log(`  ✨ Card ${idx + 1} appended to container`);
+            });
+
+            console.log('✅ renderNews() KÉSZ! Total cards created:', newsItems.length);
+        }
+
+        async function generatePostsFromNews(newsId, title) {
+            console.log('🔥 generatePostsFromNews hívva!', { newsId, title });
+
+            // Use the existing generatePosts modal, but pass news_id instead of trend_id
+            const modal = document.getElementById('postsModal');
+            const content = document.getElementById('modalContent');
+            const modalTitle = document.getElementById('modalTrendTitle');
+            const sourceBadge = document.getElementById('modalTrendSource');
+
+            modalTitle.textContent = title;
+            sourceBadge.textContent = 'NEWS';
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+
+            document.getElementById('modalLoading').classList.remove('hidden');
+            document.getElementById('modalPosts').classList.add('hidden');
+
+            try {
+                console.log('📡 Fetch hívás indítva:', { news_id: newsId });
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ news_id: newsId })
+                });
+
+                console.log('📥 Response státusz:', response.status);
+
+                const data = await response.json();
+                console.log('📦 Response data:', data);
+
+                if (data.error) throw new Error(data.error);
+
+                // Store source URL for use in selectAndEdit
+                currentSourceUrl = data.source_url || null;
+                console.log('📎 News Source URL:', currentSourceUrl);
+
+                document.getElementById('modalLoading').classList.add('hidden');
+                const container = document.getElementById('modalPosts');
+                container.classList.remove('hidden');
+
+                // Clear container
+                container.innerHTML = '';
+
+                // Create post cards programmatically to avoid escaping issues
+                data.posts.forEach((post, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white/5 border border-white/5 rounded-2xl p-6 hover:bg-white/10 transition-all group';
+
+                    // Header
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-center mb-4';
+                    header.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-gray-700 text-xs flex items-center justify-center font-bold text-white">${idx + 1}</span>
+                            <span class="text-gray-400 text-xs font-mono tracking-wide">VARIÁCIÓ</span>
+                        </div>
+                        <span class="text-xs text-gray-500 font-mono">${post.length} karakter</span>
+                    `;
+
+                    // Post text
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'text-sm text-gray-200 leading-relaxed whitespace-pre-wrap mb-6 font-sans p-4 bg-black/30 rounded-xl border border-white/5';
+                    textDiv.textContent = post;
+
+                    // Edit button
+                    const button = document.createElement('button');
+                    button.className = 'w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-all shadow-lg shadow-red-900/20 flex items-center justify-center gap-2 transform group-hover:translate-y-[-2px]';
+                    button.innerHTML = '<span>✏️</span> Szerkesztés';
+                    button.dataset.postText = post;
+                    button.addEventListener('click', function() {
+                        selectAndEdit(this.dataset.postText);
+                    });
+
+                    // Assemble card
+                    card.appendChild(header);
+                    card.appendChild(textDiv);
+                    card.appendChild(button);
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('❌ HIBA a NEWS generálás során:', error);
+                console.error('Error részletek:', error.message, error.stack);
+                document.getElementById('modalLoading').innerHTML = `<div class="text-red-400 font-bold">❌ Hiba: ${error.message}</div>`;
+            }
+        }
+
+        // Refresh Logic
+        async function refreshTrends() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            const text = document.getElementById('refreshText');
+            
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            icon.classList.add('animate-spin');
+            text.textContent = 'Frissítés...';
+            
+            try {
+                await fetch('/api/refresh', { method: 'POST' });
+                await loadTrends();
+                await loadSuperTrends();
+            } catch(e) { alert('Hiba'); } 
+            finally {
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                icon.classList.remove('animate-spin');
+                text.textContent = 'Frissítés';
+            }
+        }
+
+        // Search Logic
+        function handleSearchKeyup(e) {
+             if(e.key === 'Enter') performSearch(e.target.value);
+        }
+        async function performSearch(q) {
+            if(q.length < 2) return;
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                alert(`Találat: ${data.total} db`);
+            } catch(e) { console.error(e); }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // AGENT MANAGEMENT JAVASCRIPT
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        let currentApiKey = localStorage.getItem('tm_api_key') || '';
+
+        // API Key Modal
+        function showApiKeyModal() {
+            document.getElementById('apiKeyModal').classList.remove('hidden');
+            document.getElementById('apiKeyInput').value = currentApiKey;
+        }
+
+        function hideApiKeyModal() {
+            document.getElementById('apiKeyModal').classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('tm_api_key', key);
+                currentApiKey = key;
+                hideApiKeyModal();
+                refreshAgentStatus();
+                alert('✅ API kulcs mentve!');
+            }
+        }
+
+        async function testApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (!key) { alert('Add meg az API kulcsot!'); return; }
+
+            try {
+                const response = await fetch('/api/agent/stats', {
+                    headers: { 'X-API-Key': key }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ API kulcs érvényes!\n\nAgent-ek: ' + data.stats.agents.total + '\nTask-ok: ' + data.stats.tasks.total);
+                } else {
+                    alert('❌ Érvénytelen API kulcs!');
+                }
+            } catch (error) {
+                alert('❌ Hiba: ' + error.message);
+            }
+        }
+
+        // Agent Status Refresh
+        async function refreshAgentStatus() {
+            if (!currentApiKey) {
+                updateAgentUI(null);
+                return;
+            }
+
+            try {
+                // Stats lekérése
+                const statsResponse = await fetch('/api/agent/stats', {
+                    headers: { 'X-API-Key': currentApiKey }
+                });
+                const statsData = await statsResponse.json();
+
+                // Agents lekérése
+                const agentsResponse = await fetch('/api/agent/agents', {
+                    headers: { 'X-API-Key': currentApiKey }
+                });
+                const agentsData = await agentsResponse.json();
+
+                // Tasks lekérése
+                const tasksResponse = await fetch('/api/agent/tasks?limit=20', {
+                    headers: { 'X-API-Key': currentApiKey }
+                });
+                const tasksData = await tasksResponse.json();
+
+                updateAgentUI({
+                    stats: statsData.stats,
+                    agents: agentsData.agents || [],
+                    tasks: tasksData.tasks || []
+                });
+
+            } catch (error) {
+                console.error('Agent status error:', error);
+                updateAgentUI(null);
+            }
+        }
+
+        function updateAgentUI(data) {
+            if (!data) {
+                document.getElementById('onlineAgents').textContent = '0';
+                document.getElementById('pendingTasksCount').textContent = '0';
+                document.getElementById('completedToday').textContent = '0';
+                document.getElementById('successRate').textContent = '--%';
+                document.getElementById('agentDot').className = 'w-2 h-2 rounded-full bg-gray-500';
+                return;
+            }
+
+            const { stats, agents, tasks } = data;
+
+            // Stats update
+            document.getElementById('onlineAgents').textContent = stats.agents.online;
+            document.getElementById('pendingTasksCount').textContent = stats.tasks.pending;
+            document.getElementById('completedToday').textContent = stats.tasks.completed;
+            document.getElementById('successRate').textContent = stats.tasks.success_rate + '%';
+
+            // Agent dot color
+            const agentDot = document.getElementById('agentDot');
+            agentDot.className = stats.agents.online > 0
+                ? 'w-2 h-2 rounded-full bg-green-500 animate-pulse'
+                : 'w-2 h-2 rounded-full bg-gray-500';
+
+            // Agents list
+            const agentsList = document.getElementById('agentsList');
+            if (agents.length > 0) {
+                agentsList.innerHTML = agents.map(agent => {
+                    const isOnline = new Date(agent.last_heartbeat) > new Date(Date.now() - 120000);
+                    return `
+                        <div class="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-500'}"></span>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">${agent.name}</div>
+                                        <div class="text-[10px] text-gray-500">${agent.id.substring(0, 16)}...</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs ${isOnline ? 'text-green-400' : 'text-gray-500'}">${isOnline ? 'Online' : 'Offline'}</div>
+                                    <div class="text-[10px] text-gray-600">v${agent.version}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                agentsList.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 text-sm">
+                        <span class="text-3xl block mb-2">✨</span>
+                        Nincs regisztrált agent
+                    </div>
+                `;
+            }
+
+            // Tasks list
+            const tasksList = document.getElementById('tasksList');
+            if (tasks.length > 0) {
+                tasksList.innerHTML = tasks.map(task => {
+                    const statusColors = {
+                        'pending': 'bg-yellow-500/20 text-yellow-400',
+                        'assigned': 'bg-blue-500/20 text-blue-400',
+                        'in_progress': 'bg-purple-500/20 text-purple-400',
+                        'completed': 'bg-green-500/20 text-green-400',
+                        'failed': 'bg-red-500/20 text-red-400'
+                    };
+                    const statusEmojis = {
+                        'pending': '⏳',
+                        'assigned': '📤',
+                        'in_progress': '⚙️',
+                        'completed': '✅',
+                        'failed': '❌'
+                    };
+                    return `
+                        <div class="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all cursor-pointer"
+                             onclick="showTaskDetails('${task.id}')">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm">${statusEmojis[task.status] || '❓'}</span>
+                                    <div>
+                                        <div class="text-xs text-gray-300">${task.task_type} - ${task.platform}</div>
+                                        <div class="text-[10px] text-gray-500 truncate max-w-[150px]">${task.content ? task.content.substring(0, 30) + '...' : 'No content'}</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] px-2 py-0.5 rounded ${statusColors[task.status] || 'bg-gray-500/20 text-gray-400'}">${task.status}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                tasksList.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 text-sm">
+                        <span class="text-3xl block mb-2">📋</span>
+                        Nincs task
+                    </div>
+                `;
+            }
+        }
+
+        function filterTasks() {
+            const filter = document.getElementById('taskFilter').value;
+            // TODO: Implement filtering
+            refreshAgentStatus();
+        }
+
+        function showTaskDetails(taskId) {
+            // TODO: Modal task részletekkel
+            console.log('Show task:', taskId);
+        }
+
+        function createQuickTask(type) {
+            if (type === 'post') {
+                window.location.href = '/editor';
+            } else {
+                const url = prompt(`Add meg a ${type} URL-jét:`);
+                if (url) {
+                    createTask(type, url);
+                }
+            }
+        }
+
+        async function createTask(type, targetUrl) {
+            if (!currentApiKey) {
+                alert('Állítsd be az API kulcsot!');
+                showApiKeyModal();
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/agent/create-task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': currentApiKey
+                    },
+                    body: JSON.stringify({
+                        platform: 'facebook',
+                        task_type: type,
+                        target_url: targetUrl
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Task létrehozva! ID: ' + data.task_id);
+                    refreshAgentStatus();
+                } else {
+                    alert('❌ Hiba: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Hálózati hiba: ' + error.message);
+            }
+        }
+
+        async function retryFailedTasks() {
+            alert('🔄 Sikertelen task-ok újrapróbálása...\n\nEz a funkció hamarosan elérhető!');
+        }
+
+        // Agent init - runs after DOMContentLoaded
+        (function initAgent() {
+            // Check for API key in URL (from registration)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('api_key')) {
+                localStorage.setItem('tm_api_key', urlParams.get('api_key'));
+                currentApiKey = urlParams.get('api_key');
+            }
+
+            // Load current API key
+            currentApiKey = localStorage.getItem('tm_api_key') || '';
+
+            // Initial load
+            if (currentApiKey) {
+                refreshAgentStatus();
+            }
+
+            // Periodic refresh
+            setInterval(refreshAgentStatus, 30000);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrendMaster Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">🚀</div>
+      <h1>TrendMaster</h1>
+      <span class="version">v1.0</span>
+    </header>
+
+    <!-- Status Section -->
+    <section class="status-section">
+      <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot"></span>
+        <span class="status-text">Leállítva</span>
+      </div>
+    </section>
+
+    <!-- API Key Section -->
+    <section class="section">
+      <label for="apiKey">API Kulcs</label>
+      <div class="input-group">
+        <input type="password" id="apiKey" placeholder="Illeszd be az API kulcsod...">
+        <button class="btn-icon" id="toggleApiKey" title="Megjelenítés">👁️</button>
+      </div>
+    </section>
+
+    <!-- Platforms Section -->
+    <section class="section">
+      <label>Aktív Platformok</label>
+      <div class="platforms">
+        <div class="platform-item" data-platform="facebook">
+          <span class="platform-icon">🔵</span>
+          <span class="platform-name">Facebook</span>
+          <span class="platform-status" id="fb-status">⚫</span>
+        </div>
+        <div class="platform-item" data-platform="instagram">
+          <span class="platform-icon">📸</span>
+          <span class="platform-name">Instagram</span>
+          <span class="platform-status" id="ig-status">⚫</span>
+        </div>
+        <div class="platform-item" data-platform="twitter">
+          <span class="platform-icon">✖️</span>
+          <span class="platform-name">X (Twitter)</span>
+          <span class="platform-status" id="tw-status">⚫</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="section stats">
+      <div class="stat-item">
+        <span class="stat-value" id="tasksCompleted">0</span>
+        <span class="stat-label">Kész</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="tasksFailed">0</span>
+        <span class="stat-label">Hiba</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="lastPoll">-</span>
+        <span class="stat-label">Utolsó</span>
+      </div>
+    </section>
+
+    <!-- Control Button -->
+    <button class="btn-main" id="toggleAgent">
+      <span class="btn-icon">▶️</span>
+      <span class="btn-text">INDÍTÁS</span>
+    </button>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <a href="#" id="openOptions">⚙️ Beállítások</a>
+      <span>•</span>
+      <a href="https://trendmaster.hu/docs" target="_blank">📖 Súgó</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
