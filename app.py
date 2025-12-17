@@ -50,6 +50,15 @@ google_ai_generator = GoogleAIGenerator()  # Google AI
 social_publisher = SocialPublisher()
 media_spoofer = MediaSpoofer()
 
+# Preload RAG embedding model (avoid 30s timeout on first request)
+try:
+    from rag_store import get_embedding_model
+    print("⏳ Preloading embedding model...")
+    get_embedding_model()  # This loads the model once at startup
+    print("✅ Embedding model preloaded")
+except Exception as e:
+    print(f"⚠️ Could not preload embedding model: {e}")
+
 # AI Provider selection
 AI_PROVIDER = os.getenv('AI_PROVIDER', 'openai').lower()
 
