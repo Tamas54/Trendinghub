@@ -3,9 +3,34 @@
 ---
 
 ## ⚠️ EMLÉKEZTETŐ - 2025-12-17 ÉJFÉL!
-- [ ] **GitHub repo frissítése:** https://github.com/Tamas54/Trendinghub
-- [ ] **Railway szerverre deploy**
+- [x] **GitHub repo frissítése:** https://github.com/Tamas54/Trendinghub
+- [x] **Railway szerverre deploy**
 - [ ] Production tesztelés
+
+---
+
+## 🗡️ A Torch és a Numpy Sagája (2025-12-17 Éjjel)
+
+*Volt egyszer egy kód, ki Railway-re vágyott,*
+*De numpy kettes verziója megállított.*
+*"Nem vagyok kompatibilis!" - kiáltott a torch,*
+*Miközben az nvidia csomagok mind fogytak.*
+
+*Harminchat perc build, CUDA gigabájtok,*
+*A proxy harminc másodpercnél lecsapott.*
+*"502!" - üvöltött a Bad Gateway,*
+*Mert a model lazy loadolt, mint egy bástya.*
+
+*De a viking fejlesztő nem adta fel,*
+*Preload, CPU-only, numpy<2 - így nyert.*
+*S mikor végre zöld lett a deploy,*
+*Elment cigizni. Háromszor. Egymás után.*
+
+**Tanulságok a csatából:**
+- `torch==2.2.0+cpu` → 200MB (nem 2GB CUDA)
+- `numpy>=1.24.0,<2.0.0` → torch kompatibilitás
+- `--timeout 120 --workers 1` → gunicorn config
+- Embedding model **preload** induláskor → Railway 30s proxy timeout elkerülése
 
 ---
 

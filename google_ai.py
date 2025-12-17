@@ -243,10 +243,6 @@ class GoogleAIGenerator:
                 contents=[full_prompt],
                 config=genai_types.GenerateContentConfig(
                     response_modalities=['TEXT', 'IMAGE'],
-                    image_config=genai_types.ImageConfig(
-                        aspect_ratio="1:1",
-                        image_size="2K"
-                    ),
                 )
             )
 
