@@ -1886,12 +1886,35 @@ def generate_from_doc():
         if not extracted_text.strip():
             return jsonify({'error': 'Could not extract text from document'}), 400
 
-        # Truncate if too long (max 10000 chars for AI)
-        if len(extracted_text) > 10000:
-            extracted_text = extracted_text[:10000] + "..."
-            print(f"   ⚠️ Text truncated to 10000 characters")
+        # If document is too long, summarize it first (Railway 30s timeout)
+        if len(extracted_text) > 5000:
+            print(f"   📚 Document too long ({len(extracted_text)} chars), summarizing first...")
+            # Take first 8000 chars for summarization (more context, faster than full post gen)
+            text_for_summary = extracted_text[:8000] if len(extracted_text) > 8000 else extracted_text
+            summary_prompt = f"""Foglald össze az alábbi dokumentum LEGFONTOSABB pontjait maximum 1500 karakterben.
+Tartsd meg a kulcs információkat, számokat, neveket és főbb állításokat.
 
-        print(f"   ✅ Extracted {len(extracted_text)} characters")
+DOKUMENTUM:
+{text_for_summary}
+
+---
+ÖSSZEFOGLALÓ (max 1500 karakter):"""
+
+            # Summarize using AI
+            if AI_PROVIDER == 'google':
+                summary = google_ai_generator.generate_text(summary_prompt)
+            else:
+                summary = post_generator.generate_text(summary_prompt)
+
+            if summary and not summary.startswith("❌"):
+                print(f"   ✅ Summary created: {len(summary)} chars")
+                extracted_text = summary
+            else:
+                # Fallback: truncate if summarization fails
+                extracted_text = extracted_text[:5000] + "..."
+                print(f"   ⚠️ Summary failed, truncated to 5000 chars")
+
+        print(f"   ✅ Final text: {len(extracted_text)} characters")
 
         # Calculate SEO score using textstat
         seo_score = 0
