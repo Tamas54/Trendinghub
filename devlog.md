@@ -1,5 +1,119 @@
 # 📝 TrendMaster Development Log
 
+---
+
+## ⚠️ EMLÉKEZTETŐ - 2025-12-17 ÉJFÉL!
+- [ ] **GitHub repo frissítése:** https://github.com/Tamas54/Trendinghub
+- [ ] **Railway szerverre deploy**
+- [ ] Production tesztelés
+
+---
+
+## 2025-12-17 (Kedd) - GPT-5, Nano Banana, RAG Stílustanulás
+
+### 🚀 Új Funkciók
+
+#### 1. 📄 Doksiból Poszt (Új Tab)
+- Dokumentum feltöltés (.docx, .pdf, .md, .txt)
+- Automatikus szöveg kinyerés
+- SEO score számítás (textstat könyvtár)
+- AI poszt generálás dokumentum alapján
+- Új "Doksiból poszt" tab az Editor oldalon
+
+#### 2. 🎭 RAG Stílustanulás (Influencer Stílus)
+- **ChromaDB** vektor adatbázis lokálisan
+- `paraphrase-multilingual-MiniLM-L12-v2` embedding model (magyar támogatás!)
+- Influencer stílus minták feltöltése és tárolása
+- Automatikus chunkolás (500 karakter/chunk)
+- Stílus kontextus beillesztése a poszt generálásba
+- Dashboard-on **"Aktív stílus" kijelző** (zárt panelen is látszik)
+- **CPU-only mód** → Railway kompatibilis!
+
+#### 3. 🤖 GPT-5 Integráció
+- Model: `gpt-5-mini`
+- Új API paraméterek:
+  - `max_completion_tokens` (nem `max_tokens`!)
+  - `temperature` eltávolítva (GPT-5-mini nem támogatja)
+- Hosszabb, részletesebb posztok (500-800 karakter)
+- Teljes hír/trend leírás átadása (2000 char, nem csak 200)
+
+#### 4. 🍌 Nano Banana Képgenerálás
+- **Google Gemini 3 Pro Image** API
+- 2 lépéses folyamat:
+  1. 📝 Prompt gomb → GPT-5 generál image promptot
+  2. ✨ Kép Generálás → Nano Banana készíti a képet
+- Lokális kép kiszolgálás (`/api/serve-image/`)
+- EXIF spoofing működik az új képekre is
+
+---
+
+### 🐛 Javított Hibák
+
+| Hiba | Megoldás |
+|------|----------|
+| GPT-5 `max_tokens` error | `max_completion_tokens` használata |
+| GPT-5 `temperature` error | Eltávolítva (csak default=1 támogatott) |
+| Üres prompt generálás | `max_completion_tokens` növelve 200 → 1000 |
+| EXIF spoof fail | String → bytes encoding (`encode('utf-8')`) |
+| Lokális kép letöltés fail | `/api/download-image` javítva lokális URL-ekhez |
+| Prompt gomb nem működik | z-index fix + event listener hozzáadása |
+| CUDA error | `CUDA_VISIBLE_DEVICES=''` + `device='cpu'` |
+| Rövid posztok | Metadata 200 → 2000 karakter |
+
+---
+
+### 📁 Fájl Változások
+
+**Módosított:**
+- `app.py` - Új API endpointok (RAG, doc, image)
+- `generator.py` - GPT-5, RAG kontextus integráció
+- `google_ai.py` - Nano Banana képgenerálás
+- `media_spoofer.py` - bytes encoding fix
+- `requirements.txt` - Új függőségek
+- `templates/editor.html` - Doksiból Poszt tab, Prompt gomb
+- `templates/dashboard.html` - Influencer Stílus szekció + aktív kijelző
+
+**Új fájlok:**
+- `rag_store.py` - ChromaDB RAG store osztály
+- `chroma_db/` - Vektor adatbázis mappa (gitignore!)
+
+---
+
+### 📦 Új Függőségek
+
+```
+google-genai>=1.0.0
+python-docx>=1.1.0
+pdfplumber>=0.11.0
+markdown>=3.5.0
+textstat>=0.7.3
+chromadb>=0.4.22
+sentence-transformers>=2.2.2
+```
+
+---
+
+### ⚡ Teljesítmény (CPU-n)
+
+| Művelet | Idő |
+|---------|-----|
+| RAG embedding | ~0.5 mp/chunk |
+| RAG lekérdezés | ~20 ms |
+| Model betöltés | 3-5 mp (egyszer) |
+| Poszt generálás | 2-5 mp (API) |
+| Kép generálás | 5-15 mp (API) |
+
+---
+
+### 🎯 Következő Lépések
+
+1. ✅ **ÉJFÉLKOR: Deploy Railway-re!**
+2. GitHub repo sync
+3. Production tesztelés
+4. Stílus minták gyűjtése
+
+---
+
 ## 2025-11-25 (Hétfő) - SaaS Integráció & UI Javítások
 
 ### ✅ Elvégzett feladatok

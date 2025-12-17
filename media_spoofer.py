@@ -83,20 +83,20 @@ class MediaSpoofer:
             except:
                 exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
 
-            # 0th IFD (Fő adatok)
-            exif_dict["0th"][piexif.ImageIFD.Make] = profile["Make"]
-            exif_dict["0th"][piexif.ImageIFD.Model] = profile["Model"]
-            exif_dict["0th"][piexif.ImageIFD.Software] = profile["Software"]
-            
+            # 0th IFD (Fő adatok) - piexif requires bytes for string values
+            exif_dict["0th"][piexif.ImageIFD.Make] = profile["Make"].encode('utf-8')
+            exif_dict["0th"][piexif.ImageIFD.Model] = profile["Model"].encode('utf-8')
+            exif_dict["0th"][piexif.ImageIFD.Software] = profile["Software"].encode('utf-8')
+
             # DateTime (Mostani idő, megfelelő formátumban)
-            current_time = datetime.now().strftime("%Y:%m:%d %H:%M:%S")
+            current_time = datetime.now().strftime("%Y:%m:%d %H:%M:%S").encode('utf-8')
             exif_dict["0th"][piexif.ImageIFD.DateTime] = current_time
             exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = current_time
             exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = current_time
 
             # Lens Info (Ha van)
             if profile.get("LensModel"):
-                exif_dict["Exif"][piexif.ExifIFD.LensModel] = profile["LensModel"]
+                exif_dict["Exif"][piexif.ExifIFD.LensModel] = profile["LensModel"].encode('utf-8')
 
             # Visszaírás a fájlba
             exif_bytes = piexif.dump(exif_dict)

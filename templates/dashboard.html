@@ -188,6 +188,130 @@
             </div>
         </div>
 
+        <!-- INFLUENCER STÍLUS SZEKCIÓ -->
+        <div class="glass-card rounded-2xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🎭</span>
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-200">Influencer Stílus</h2>
+                        <p class="text-xs text-gray-500">RAG alapú stílustanulás - Tanítsd meg az AI-t a te stílusodra</p>
+                        <!-- Aktív stílus kijelzés -->
+                        <div id="activeStyleIndicator" class="mt-1 flex items-center gap-2">
+                            <span class="text-[10px] text-gray-600">Aktív:</span>
+                            <span id="activeStyleName" class="text-[10px] font-bold text-purple-400">Alapértelmezett</span>
+                            <span id="activeStyleChunks" class="text-[10px] text-gray-600"></span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleStylePanel()" class="text-xs px-3 py-1.5 rounded-full bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all cursor-pointer">
+                    <span id="stylePanelToggleText">Megnyitás</span>
+                </button>
+            </div>
+
+            <!-- Stílus Panel (rejtett alapból) -->
+            <div id="stylePanel" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+
+                    <!-- Bal oldal: Feltöltés -->
+                    <div class="bg-black/20 rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
+                            <span>📤</span> Stílus Feltöltés
+                        </h3>
+
+                        <!-- Fájl feltöltés -->
+                        <div class="mb-4">
+                            <div id="styleDropzone"
+                                 class="border-2 border-dashed border-white/10 rounded-xl p-4 text-center hover:border-purple-500/50 transition-colors cursor-pointer"
+                                 onclick="document.getElementById('styleFileInput').click()">
+                                <span class="text-2xl block mb-2">📁</span>
+                                <span class="text-xs text-gray-400">Húzd ide a fájlt (könyv, posztok, írások)</span>
+                                <span class="text-[10px] text-gray-600 block mt-1">.txt, .md, .docx, .pdf</span>
+                                <input type="file" id="styleFileInput" accept=".txt,.md,.docx,.pdf" class="hidden" onchange="handleStyleFileSelect(event)">
+                            </div>
+                            <div id="styleFileInfo" class="hidden mt-2 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-purple-400">
+                                <span id="styleFileName"></span>
+                            </div>
+                        </div>
+
+                        <!-- Vagy szöveg beillesztés -->
+                        <div class="mb-4">
+                            <label class="text-[10px] text-gray-500 uppercase tracking-wider block mb-2">Vagy illessz be szöveget:</label>
+                            <textarea id="styleTextInput" rows="3"
+                                      class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:border-purple-500 focus:outline-none resize-none"
+                                      placeholder="Másold be a stíluspéldát..."></textarea>
+                        </div>
+
+                        <!-- Forrás név és stílus -->
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div>
+                                <label class="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Forrás neve *</label>
+                                <input type="text" id="styleSourceName"
+                                       class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:border-purple-500 focus:outline-none"
+                                       placeholder="pl. Kovács János">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Stílus kategória</label>
+                                <select id="styleCategory" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:border-purple-500 focus:outline-none">
+                                    <option value="default">Általános</option>
+                                    <option value="formal">Formális</option>
+                                    <option value="casual">Lazább</option>
+                                    <option value="humorous">Humoros</option>
+                                    <option value="professional">Szakmai</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Feltöltés gomb -->
+                        <button onclick="uploadStyleSample()" id="uploadStyleBtn"
+                                class="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold hover:opacity-90 transition-all cursor-pointer">
+                            🚀 Stílus Hozzáadása
+                        </button>
+                    </div>
+
+                    <!-- Jobb oldal: Tárolt stílusok -->
+                    <div class="bg-black/20 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                <span>📚</span> Tárolt Stílusok
+                            </h3>
+                            <button onclick="loadStyleSources()" class="text-[10px] text-gray-500 hover:text-white cursor-pointer">
+                                🔄 Frissítés
+                            </button>
+                        </div>
+
+                        <!-- Stílus statisztika -->
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <div class="p-3 rounded-lg bg-white/5 text-center">
+                                <span id="styleDocCount" class="text-xl font-bold text-purple-400">--</span>
+                                <span class="text-[10px] text-gray-500 block">Dokumentum</span>
+                            </div>
+                            <div class="p-3 rounded-lg bg-white/5 text-center">
+                                <span id="styleSourceCount" class="text-xl font-bold text-pink-400">--</span>
+                                <span class="text-[10px] text-gray-500 block">Forrás</span>
+                            </div>
+                        </div>
+
+                        <!-- Források listája -->
+                        <div id="styleSourcesList" class="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            <p class="text-xs text-gray-600 text-center py-4">Betöltés...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RAG használati útmutató -->
+                <div class="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div class="text-xs text-blue-400">
+                        <span class="font-bold">💡 Hogyan működik?</span>
+                        <p class="text-blue-300/70 mt-1">
+                            A feltöltött szövegeket az AI megtanulja és poszt generáláskor referenciának használja.
+                            Minél több példát adsz meg egy forrásból, annál jobban tanulja meg azt a stílust.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="loadingState" class="flex flex-col items-center justify-center py-32">
             <div class="relative w-24 h-24">
                 <div class="absolute inset-0 rounded-full border-t-2 border-r-2 border-red-500 animate-spin"></div>
@@ -1160,6 +1284,210 @@
 
         async function retryFailedTasks() {
             alert('🔄 Sikertelen task-ok újrapróbálása...\n\nEz a funkció hamarosan elérhető!');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // INFLUENCER STÍLUS / RAG JAVASCRIPT
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        let selectedStyleFile = null;
+
+        function toggleStylePanel() {
+            const panel = document.getElementById('stylePanel');
+            const toggleText = document.getElementById('stylePanelToggleText');
+
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                toggleText.textContent = 'Bezárás';
+                loadStyleSources();
+            } else {
+                panel.classList.add('hidden');
+                toggleText.textContent = 'Megnyitás';
+            }
+        }
+
+        function handleStyleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const allowedExtensions = ['txt', 'md', 'docx', 'pdf'];
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            if (!allowedExtensions.includes(ext)) {
+                alert('Nem támogatott fájltípus! Engedélyezett: .txt, .md, .docx, .pdf');
+                return;
+            }
+
+            selectedStyleFile = file;
+            document.getElementById('styleFileInfo').classList.remove('hidden');
+            document.getElementById('styleFileName').textContent = `📄 ${file.name} (${formatFileSize(file.size)})`;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function uploadStyleSample() {
+            const sourceName = document.getElementById('styleSourceName').value.trim();
+            const styleCategory = document.getElementById('styleCategory').value;
+            const textInput = document.getElementById('styleTextInput').value.trim();
+
+            if (!sourceName) {
+                alert('Kérlek add meg a forrás nevét!');
+                return;
+            }
+
+            if (!selectedStyleFile && !textInput) {
+                alert('Kérlek válassz ki egy fájlt vagy illessz be szöveget!');
+                return;
+            }
+
+            const btn = document.getElementById('uploadStyleBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Feltöltés...';
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('source_name', sourceName);
+                formData.append('style_name', styleCategory);
+
+                if (selectedStyleFile) {
+                    formData.append('file', selectedStyleFile);
+                } else {
+                    formData.append('text', textInput);
+                }
+
+                const response = await fetch('/api/style/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ Sikeresen hozzáadva!\n\n${data.chunks_added} szövegrészlet tárolva.`);
+
+                    // Clear form
+                    selectedStyleFile = null;
+                    document.getElementById('styleFileInput').value = '';
+                    document.getElementById('styleFileInfo').classList.add('hidden');
+                    document.getElementById('styleTextInput').value = '';
+                    document.getElementById('styleSourceName').value = '';
+
+                    // Refresh sources list
+                    loadStyleSources();
+                } else {
+                    throw new Error(data.error || 'Ismeretlen hiba');
+                }
+            } catch (error) {
+                alert('❌ Hiba: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function loadStyleSources() {
+            const container = document.getElementById('styleSourcesList');
+            const docCount = document.getElementById('styleDocCount');
+            const sourceCount = document.getElementById('styleSourceCount');
+
+            if (container) {
+                container.innerHTML = '<p class="text-xs text-gray-600 text-center py-4">Betöltés...</p>';
+            }
+
+            try {
+                const response = await fetch('/api/style/stats');
+                const data = await response.json();
+
+                if (data.success) {
+                    if (docCount) docCount.textContent = data.stats.total_documents || 0;
+                    if (sourceCount) sourceCount.textContent = data.stats.unique_sources || 0;
+
+                    // Update active style indicator
+                    updateActiveStyleIndicator(data.stats);
+
+                    if (container && data.stats.sources && data.stats.sources.length > 0) {
+                        container.innerHTML = '';
+
+                        data.stats.sources.forEach(source => {
+                            const item = document.createElement('div');
+                            item.className = 'flex items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all';
+
+                            item.innerHTML = `
+                                <div>
+                                    <span class="text-xs text-gray-300 font-medium">${source.source_name}</span>
+                                    <span class="text-[10px] text-gray-500 block">${source.chunk_count} részlet · ${source.styles.join(', ')}</span>
+                                </div>
+                                <button onclick="deleteStyleSource('${source.source_name}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/20 transition-all cursor-pointer">
+                                    🗑️
+                                </button>
+                            `;
+
+                            container.appendChild(item);
+                        });
+                    } else if (container) {
+                        container.innerHTML = '<p class="text-xs text-gray-600 text-center py-4">Még nincs tárolt stílus</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading style sources:', error);
+                if (container) {
+                    container.innerHTML = '<p class="text-xs text-red-400 text-center py-4">Hiba a betöltéskor</p>';
+                }
+                // Set default if error
+                updateActiveStyleIndicator(null);
+            }
+        }
+
+        function updateActiveStyleIndicator(stats) {
+            const nameEl = document.getElementById('activeStyleName');
+            const chunksEl = document.getElementById('activeStyleChunks');
+
+            if (!nameEl) return;
+
+            if (stats && stats.sources && stats.sources.length > 0) {
+                // Show all source names
+                const sourceNames = stats.sources.map(s => s.source_name).join(', ');
+                const totalChunks = stats.total_documents || 0;
+
+                nameEl.textContent = sourceNames;
+                nameEl.className = 'text-[10px] font-bold text-green-400';
+                chunksEl.textContent = `(${totalChunks} részlet)`;
+            } else {
+                nameEl.textContent = 'Alapértelmezett';
+                nameEl.className = 'text-[10px] font-bold text-purple-400';
+                chunksEl.textContent = '';
+            }
+        }
+
+        // Load style stats on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStyleSources();
+        });
+
+        async function deleteStyleSource(sourceName) {
+            if (!confirm(`Biztosan törlöd a "${sourceName}" forrást?`)) return;
+
+            try {
+                const response = await fetch(`/api/style/source/${encodeURIComponent(sourceName)}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ Törölve: ${data.deleted_count} részlet`);
+                    loadStyleSources();
+                } else {
+                    throw new Error(data.error || 'Ismeretlen hiba');
+                }
+            } catch (error) {
+                alert('❌ Hiba: ' + error.message);
+            }
         }
 
         // Agent init - runs after DOMContentLoaded

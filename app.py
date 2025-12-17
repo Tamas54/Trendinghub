@@ -521,7 +521,9 @@ def generate_posts():
 
         topic = news.get('title', '')
         source = f"news_{news.get('source', 'unknown').lower().replace(' ', '_')}"
-        metadata = f"{news.get('description', '')[:200]}... | {news.get('category', '')}"
+        # Pass FULL description (up to 2000 chars) for better AI context
+        description = news.get('description', '') or ''
+        metadata = f"CIKK RÉSZLETES LEÍRÁSA:\n{description[:2000]}\n\nKategória: {news.get('category', '')}"
         trend_id = news_id  # Use news_id as trend_id for storage
         source_url = news.get('link')  # Article link kommenthez
 
@@ -709,11 +711,45 @@ def save_connection():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/generate-image-prompt', methods=['POST'])
+def generate_image_prompt():
+    """
+    Generate an optimized image prompt from post text using GPT-5
+    POST body: { "post_text": "the post content" }
+    Returns: { "success": true, "prompt": "optimized image prompt" }
+    """
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+
+    post_text = data.get('post_text')
+
+    if not post_text:
+        return jsonify({'error': 'post_text is required'}), 400
+
+    try:
+        print(f"📝 Generating image prompt from post text...")
+        prompt = post_generator.generate_image_prompt(post_text)
+
+        return jsonify({
+            'success': True,
+            'prompt': prompt
+        })
+
+    except Exception as e:
+        print(f"❌ Error generating image prompt: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/generate-image', methods=['POST'])
 def generate_image():
     """
-    Generate image using DALL-E 3
-    POST body: { "prompt": "description of image" }
+    Generate image using Nano Banana (Gemini 3 Pro Image) - default
+    POST body: {
+        "prompt": "description of image",
+        "provider": "google" | "openai" (optional, default: google for Nano Banana)
+    }
     """
     data = request.get_json()
 
@@ -721,24 +757,31 @@ def generate_image():
         return jsonify({'error': 'Request body is required'}), 400
 
     prompt = data.get('prompt')
+    # Default to Google (Nano Banana / Gemini 3 Pro Image)
+    provider = data.get('provider', 'google')
 
     if not prompt:
         return jsonify({'error': 'prompt is required'}), 400
 
     try:
-        print(f"   Using AI Provider for image: {AI_PROVIDER.upper()}")
+        print(f"🎨 Generating image with Nano Banana (Gemini 3 Pro Image)")
 
-        # Choose generator based on AI_PROVIDER
-        if AI_PROVIDER == 'google':
-            image_url = google_ai_generator.generate_image(prompt)
+        # Always use Google/Nano Banana for image generation
+        result = google_ai_generator.generate_image(prompt)
+
+        # Check if result is a local file path or URL
+        if result and result.startswith('/') and not result.startswith('http'):
+            # Local file path - convert to served URL
+            image_url = f"/api/serve-image{result}"
         else:
-            image_url = post_generator.generate_image(prompt)
+            # Already a URL (fallback case)
+            image_url = result
 
         return jsonify({
             'success': True,
             'image_url': image_url,
             'prompt': prompt,
-            'provider': AI_PROVIDER
+            'provider': 'google (Nano Banana)'
         })
 
     except Exception as e:
@@ -860,6 +903,35 @@ def serve_video(filename):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/serve-image/<path:filename>', methods=['GET'])
+def serve_image(filename):
+    """Serve generated image file (Nano Banana)"""
+    try:
+        from flask import send_file
+        import os
+
+        print(f"🖼️ Serving image: {filename}")
+
+        # Ensure absolute path (add leading / if missing)
+        if not filename.startswith('/'):
+            filename = '/' + filename
+
+        print(f"🖼️ Absolute path: {filename}")
+
+        # Check if file exists
+        if os.path.exists(filename):
+            print(f"✅ Image file found, serving...")
+            return send_file(filename, mimetype='image/png')
+        else:
+            print(f"❌ Image file not found: {filename}")
+            return jsonify({'error': 'Image file not found'}), 404
+    except Exception as e:
+        print(f"❌ Error serving image: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/publish', methods=['POST'])
 def publish_post():
     """
@@ -960,7 +1032,7 @@ def publish_post():
 def download_image():
     """
     Download an image from URL (proxy to avoid CORS)
-    POST body: { "image_url": "https://..." }
+    POST body: { "image_url": "https://..." or "/api/serve-image/..." }
     """
     data = request.get_json()
 
@@ -973,37 +1045,58 @@ def download_image():
         return jsonify({'error': 'image_url is required'}), 400
 
     try:
-        import requests
         import tempfile
         import uuid
-
-        print(f"📥 Downloading image from: {image_url[:50]}...")
-
-        # Download image
-        response = requests.get(image_url, timeout=10)
-        response.raise_for_status()
-
-        # Save to temp file
-        temp_dir = tempfile.gettempdir()
-        temp_filename = f"download_{uuid.uuid4()}.png"
-        temp_path = os.path.join(temp_dir, temp_filename)
-
-        with open(temp_path, 'wb') as f:
-            f.write(response.content)
-
-        print(f"✅ Image downloaded successfully")
-
-        # Return file
         from flask import send_file
-        return send_file(
-            temp_path,
-            mimetype='image/png',
-            as_attachment=True,
-            download_name=f"trendmaster-{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
-        )
+
+        print(f"📥 Downloading image from: {image_url[:80]}...")
+
+        # Check if it's a local serve-image URL
+        if image_url.startswith('/api/serve-image/'):
+            # Extract the file path from the URL
+            file_path = image_url.replace('/api/serve-image', '')
+            if not file_path.startswith('/'):
+                file_path = '/' + file_path
+
+            print(f"📥 Local image path: {file_path}")
+
+            if os.path.exists(file_path):
+                return send_file(
+                    file_path,
+                    mimetype='image/png',
+                    as_attachment=True,
+                    download_name=f"trendmaster-{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
+                )
+            else:
+                return jsonify({'error': f'Local file not found: {file_path}'}), 404
+        else:
+            # External URL - download via requests
+            import requests as req
+
+            response = req.get(image_url, timeout=10)
+            response.raise_for_status()
+
+            # Save to temp file
+            temp_dir = tempfile.gettempdir()
+            temp_filename = f"download_{uuid.uuid4()}.png"
+            temp_path = os.path.join(temp_dir, temp_filename)
+
+            with open(temp_path, 'wb') as f:
+                f.write(response.content)
+
+            print(f"✅ Image downloaded successfully")
+
+            return send_file(
+                temp_path,
+                mimetype='image/png',
+                as_attachment=True,
+                download_name=f"trendmaster-{datetime.now().strftime('%Y%m%d-%H%M%S')}.png"
+            )
 
     except Exception as e:
         print(f"❌ Error downloading image: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -1028,13 +1121,24 @@ def spoof_image():
         # Save uploaded file temporarily
         import tempfile
         import uuid
+        from PIL import Image as PILImage
 
         temp_dir = tempfile.gettempdir()
-        file_ext = os.path.splitext(file.filename)[1] or '.jpg'
-        temp_filename = f"spoof_{uuid.uuid4()}{file_ext}"
+
+        # Always save as .png first to let spoofer detect and convert
+        temp_filename = f"spoof_{uuid.uuid4()}.png"
         temp_path = os.path.join(temp_dir, temp_filename)
 
         file.save(temp_path)
+        print(f"🔧 Saved uploaded file: {temp_path}")
+        print(f"🔧 File size: {os.path.getsize(temp_path)} bytes")
+
+        # Check actual image format
+        try:
+            with PILImage.open(temp_path) as img:
+                print(f"🔧 Image format: {img.format}, mode: {img.mode}, size: {img.size}")
+        except Exception as img_err:
+            print(f"⚠️ Could not read image info: {img_err}")
 
         # Apply EXIF spoofing
         print(f"🔧 Spoofing image: {temp_path} with device: {device}")
@@ -1043,7 +1147,8 @@ def spoof_image():
 
         if not success:
             print(f"❌ Spoof failed for: {temp_path}")
-            os.remove(temp_path)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
             return jsonify({'error': 'Failed to spoof image'}), 500
 
         # Return the spoofed image
@@ -1057,7 +1162,9 @@ def spoof_image():
 
     except Exception as e:
         print(f"❌ Error spoofing image: {e}")
-        if os.path.exists(temp_path):
+        import traceback
+        traceback.print_exc()
+        if 'temp_path' in locals() and os.path.exists(temp_path):
             os.remove(temp_path)
         return jsonify({'error': str(e)}), 500
 
@@ -1452,6 +1559,462 @@ Generáld le a posztot/scriptet a fenti utasítások alapján:"""
         return jsonify({'error': f'Could not fetch URL: {str(e)}'}), 400
     except Exception as e:
         print(f"❌ Error generating from URL: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# RAG STYLE LEARNING
+# ============================================================================
+
+@app.route('/api/style/upload', methods=['POST'])
+def upload_style():
+    """
+    Upload text content to learn from as style reference.
+    Accepts file upload or raw text.
+    POST body: multipart/form-data with:
+        - file: document file (.txt, .md, .docx, .pdf) OR
+        - text: raw text content
+        - source_name: identifier for this source (required)
+        - style_name: style category (optional, default: "default")
+    """
+    from rag_store import get_rag_store
+
+    source_name = request.form.get('source_name')
+    style_name = request.form.get('style_name', 'default')
+
+    if not source_name:
+        return jsonify({'error': 'source_name is required'}), 400
+
+    text_content = ""
+
+    # Check for file upload
+    if 'file' in request.files and request.files['file'].filename:
+        file = request.files['file']
+        filename = file.filename.lower()
+        ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+
+        import tempfile
+        import os as os_module
+
+        temp_dir = tempfile.gettempdir()
+        temp_path = os_module.path.join(temp_dir, f"style_upload_{file.filename}")
+        file.save(temp_path)
+
+        try:
+            if ext == 'txt':
+                with open(temp_path, 'r', encoding='utf-8') as f:
+                    text_content = f.read()
+
+            elif ext == 'md':
+                import markdown
+                from bs4 import BeautifulSoup
+                with open(temp_path, 'r', encoding='utf-8') as f:
+                    md_content = f.read()
+                html = markdown.markdown(md_content)
+                text_content = BeautifulSoup(html, 'html.parser').get_text()
+
+            elif ext == 'docx':
+                from docx import Document
+                doc = Document(temp_path)
+                paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+                text_content = '\n\n'.join(paragraphs)
+
+            elif ext == 'pdf':
+                import pdfplumber
+                with pdfplumber.open(temp_path) as pdf:
+                    pages_text = []
+                    for page in pdf.pages:
+                        text = page.extract_text()
+                        if text:
+                            pages_text.append(text)
+                    text_content = '\n\n'.join(pages_text)
+            else:
+                return jsonify({'error': f'Unsupported file type: {ext}'}), 400
+
+            os_module.remove(temp_path)
+        except Exception as e:
+            return jsonify({'error': f'Error processing file: {str(e)}'}), 500
+
+    # Check for raw text
+    elif 'text' in request.form:
+        text_content = request.form.get('text', '')
+    else:
+        return jsonify({'error': 'Either file or text is required'}), 400
+
+    if not text_content.strip():
+        return jsonify({'error': 'No text content found'}), 400
+
+    try:
+        rag_store = get_rag_store()
+        chunks_added = rag_store.add_style_sample(text_content, source_name, style_name)
+
+        return jsonify({
+            'success': True,
+            'message': f'Style sample added successfully',
+            'source_name': source_name,
+            'style_name': style_name,
+            'chunks_added': chunks_added,
+            'text_length': len(text_content)
+        })
+    except Exception as e:
+        print(f"❌ Error adding style sample: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/style/query', methods=['POST'])
+def query_style():
+    """
+    Query the style store for similar text samples.
+    POST body: {
+        "query": "text to match",
+        "n_results": 5,
+        "source_filter": "optional source name",
+        "style_filter": "optional style name"
+    }
+    """
+    from rag_store import get_rag_store
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    query = data.get('query')
+    if not query:
+        return jsonify({'error': 'query is required'}), 400
+
+    try:
+        rag_store = get_rag_store()
+        results = rag_store.query_style(
+            query,
+            n_results=data.get('n_results', 5),
+            source_filter=data.get('source_filter'),
+            style_filter=data.get('style_filter')
+        )
+
+        return jsonify({
+            'success': True,
+            'results': results
+        })
+    except Exception as e:
+        print(f"❌ Error querying style: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/style/context', methods=['POST'])
+def get_style_context():
+    """
+    Get style context for prompt augmentation.
+    POST body: {
+        "query": "topic or text to generate context for",
+        "max_tokens": 1000
+    }
+    """
+    from rag_store import get_rag_store
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    query = data.get('query')
+    if not query:
+        return jsonify({'error': 'query is required'}), 400
+
+    try:
+        rag_store = get_rag_store()
+        context = rag_store.get_style_context(
+            query,
+            max_tokens=data.get('max_tokens', 1000)
+        )
+
+        return jsonify({
+            'success': True,
+            'context': context,
+            'has_context': bool(context)
+        })
+    except Exception as e:
+        print(f"❌ Error getting style context: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/style/sources', methods=['GET'])
+def list_style_sources():
+    """List all style sources in the store."""
+    from rag_store import get_rag_store
+
+    try:
+        rag_store = get_rag_store()
+        sources = rag_store.list_sources()
+
+        return jsonify({
+            'success': True,
+            'sources': sources
+        })
+    except Exception as e:
+        print(f"❌ Error listing sources: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/style/source/<source_name>', methods=['DELETE'])
+def delete_style_source(source_name):
+    """Delete all chunks from a specific source."""
+    from rag_store import get_rag_store
+
+    try:
+        rag_store = get_rag_store()
+        deleted_count = rag_store.delete_source(source_name)
+
+        return jsonify({
+            'success': True,
+            'message': f'Deleted {deleted_count} chunks from {source_name}',
+            'deleted_count': deleted_count
+        })
+    except Exception as e:
+        print(f"❌ Error deleting source: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/style/stats', methods=['GET'])
+def get_style_stats():
+    """Get statistics about the style store."""
+    from rag_store import get_rag_store
+
+    try:
+        rag_store = get_rag_store()
+        stats = rag_store.get_stats()
+
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        print(f"❌ Error getting stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# DOCUMENT PARSING (Doksiból Poszt)
+# ============================================================================
+
+@app.route('/api/generate-from-doc', methods=['POST'])
+def generate_from_doc():
+    """
+    Generate social media post from uploaded document
+    Accepts: .docx, .pdf, .md, .txt files
+    POST body: multipart/form-data with:
+        - file: the document file
+        - language: hu, en, de, es, fr (default: hu)
+        - style: facebook, linkedin, instagram, twitter, tiktok, reels, shorts (default: facebook)
+    """
+    import tempfile
+    import os as os_module
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    language = request.form.get('language', 'hu')
+    style = request.form.get('style', 'facebook')
+
+    if not file.filename:
+        return jsonify({'error': 'No file selected'}), 400
+
+    # Get file extension
+    filename = file.filename.lower()
+    ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+
+    allowed_extensions = ['docx', 'pdf', 'md', 'txt']
+    if ext not in allowed_extensions:
+        return jsonify({'error': f'Unsupported file type. Allowed: {", ".join(allowed_extensions)}'}), 400
+
+    print(f"📄 Processing document: {file.filename}")
+    print(f"   Extension: {ext}, Language: {language}, Style: {style}")
+
+    try:
+        # Save file temporarily
+        temp_dir = tempfile.gettempdir()
+        temp_path = os_module.path.join(temp_dir, f"upload_{file.filename}")
+        file.save(temp_path)
+
+        # Extract text based on file type
+        extracted_text = ""
+
+        if ext == 'txt':
+            with open(temp_path, 'r', encoding='utf-8') as f:
+                extracted_text = f.read()
+
+        elif ext == 'md':
+            import markdown
+            with open(temp_path, 'r', encoding='utf-8') as f:
+                md_content = f.read()
+            # Convert markdown to plain text (strip HTML)
+            from bs4 import BeautifulSoup
+            html = markdown.markdown(md_content)
+            extracted_text = BeautifulSoup(html, 'html.parser').get_text()
+
+        elif ext == 'docx':
+            from docx import Document
+            doc = Document(temp_path)
+            paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
+            extracted_text = '\n\n'.join(paragraphs)
+
+        elif ext == 'pdf':
+            import pdfplumber
+            with pdfplumber.open(temp_path) as pdf:
+                pages_text = []
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        pages_text.append(text)
+                extracted_text = '\n\n'.join(pages_text)
+
+        # Clean up temp file
+        os_module.remove(temp_path)
+
+        if not extracted_text.strip():
+            return jsonify({'error': 'Could not extract text from document'}), 400
+
+        # Truncate if too long (max 10000 chars for AI)
+        if len(extracted_text) > 10000:
+            extracted_text = extracted_text[:10000] + "..."
+            print(f"   ⚠️ Text truncated to 10000 characters")
+
+        print(f"   ✅ Extracted {len(extracted_text)} characters")
+
+        # Calculate SEO score using textstat
+        seo_score = 0
+        readability_info = {}
+        try:
+            import textstat
+            # Set language for textstat
+            if language == 'hu':
+                textstat.set_lang('en')  # Hungarian not supported, use EN as fallback
+            else:
+                textstat.set_lang(language if language in ['en', 'de', 'es', 'fr'] else 'en')
+
+            # Calculate various readability metrics
+            flesch_score = textstat.flesch_reading_ease(extracted_text)
+            grade_level = textstat.flesch_kincaid_grade(extracted_text)
+            word_count = textstat.lexicon_count(extracted_text)
+            sentence_count = textstat.sentence_count(extracted_text)
+
+            # Calculate SEO score (0-100)
+            # Higher flesch score = easier to read = better for social media
+            seo_score = min(100, max(0, int(flesch_score)))
+
+            readability_info = {
+                'flesch_score': round(flesch_score, 1),
+                'grade_level': round(grade_level, 1),
+                'word_count': word_count,
+                'sentence_count': sentence_count,
+                'seo_score': seo_score
+            }
+            print(f"   📊 SEO Score: {seo_score}, Flesch: {flesch_score:.1f}")
+        except Exception as e:
+            print(f"   ⚠️ Could not calculate SEO score: {e}")
+            seo_score = 50  # Default score
+
+        # Build prompt based on style
+        language_names = {
+            'hu': 'magyar',
+            'en': 'English',
+            'de': 'Deutsch',
+            'es': 'Español',
+            'fr': 'Français'
+        }
+
+        style_prompts = {
+            'facebook': f"""Írj egy figyelemfelkeltő Facebook posztot ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A poszt legyen:
+- Rövid (max 200 szó)
+- Tartalmazzon 2-3 emojit
+- Tartalmazzon 1-3 releváns hashtagot
+- Tegyen fel egy gondolatébresztő kérdést a végén
+- Legyen informatív de szórakoztató hangvételű""",
+
+            'linkedin': f"""Írj egy professzionális LinkedIn posztot ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A poszt legyen:
+- Szakmai hangvételű
+- 150-250 szó
+- Tartalmazzon kulcsfontosságú tanulságokat (bullet points)
+- Végezzen gondolatébresztő kérdéssel vagy call-to-action-nel
+- Releváns hashtagok a végén""",
+
+            'instagram': f"""Írj egy Instagram caption-t ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A caption legyen:
+- Rövid és ütős (max 150 szó)
+- Tartalmazzon 3-5 emojit
+- 5-10 releváns hashtag a végén
+- Vizuális leírás javaslat a képhez""",
+
+            'twitter': f"""Írj egy X/Twitter posztot ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A poszt legyen:
+- Max 280 karakter
+- Ütős és figyelemfelkeltő
+- 1-2 hashtag
+- Legyen rövid és tömör""",
+
+            'tiktok': f"""Írj egy TikTok videó scriptet ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A script legyen:
+- Hook az elején (első 3 másodperc)
+- 30-60 másodperces videóhoz
+- Dinamikus, gyors tempójú
+- Közvetlen megszólítás (Te/Ti)
+- CTA a végén (like, follow, comment)""",
+
+            'reels': f"""Írj egy Facebook/Instagram Reels videó scriptet ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A script legyen:
+- Erős hook az elején
+- 15-30 másodperces videóhoz
+- Vizuális tippekkel (mit mutassunk)
+- Szórakoztató és informatív
+- Emojikkal és dinamikával""",
+
+            'shorts': f"""Írj egy YouTube Shorts videó scriptet ebből a dokumentumból {language_names.get(language, 'magyar')} nyelven.
+A script legyen:
+- Figyelemfelkeltő nyitás
+- Max 60 másodperces videóhoz
+- Értékes tartalom gyorsan
+- Subscribe CTA a végén
+- Vizuális útmutatással"""
+        }
+
+        prompt = style_prompts.get(style, style_prompts['facebook'])
+
+        full_prompt = f"""{prompt}
+
+DOKUMENTUM TARTALMA:
+{extracted_text}
+
+---
+Generáld le a posztot/scriptet a fenti utasítások alapján:"""
+
+        print(f"   🤖 Generating with AI Provider: {AI_PROVIDER.upper()}")
+
+        # Generate content using AI
+        if AI_PROVIDER == 'google':
+            content = google_ai_generator.generate_text(full_prompt)
+        else:
+            content = post_generator.generate_text(full_prompt)
+
+        if not content:
+            return jsonify({'error': 'AI generation failed'}), 500
+
+        return jsonify({
+            'success': True,
+            'content': content,
+            'filename': file.filename,
+            'style': style,
+            'language': language,
+            'readability': readability_info,
+            'text_length': len(extracted_text)
+        })
+
+    except Exception as e:
+        print(f"❌ Error processing document: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500

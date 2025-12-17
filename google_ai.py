@@ -1,9 +1,10 @@
 """
 Google AI Generator for TrendMaster
-Uses Gemini 3, Nano Banana Pro (Image), and Veo 3.1 (Video) APIs
+Uses Gemini 3, Nano Banana Pro (Gemini 3 Pro Image), and Veo 3.1 (Video) APIs
 """
 import google.generativeai as genai
-# from google import genai as genai_new  # New SDK for Veo 3.1 - commented out due to import error
+from google import genai as genai_new  # New SDK for image and video generation
+from google.genai import types as genai_types
 import os
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
@@ -21,6 +22,7 @@ class GoogleAIGenerator:
         if not api_key:
             print("⚠️ GOOGLE_API_KEY not found in environment")
             self.client = None
+            self.new_client = None
         else:
             try:
                 genai.configure(api_key=api_key)
@@ -30,16 +32,20 @@ class GoogleAIGenerator:
                 self.image_model_name = os.getenv('GEMINI_IMAGE_MODEL', 'gemini-3-pro-image-preview')
                 self.video_model_name = os.getenv('GEMINI_VIDEO_MODEL', 'veo-3.1-generate-preview')
 
-                # Test connection with Gemini 3
+                # Test connection with Gemini 3 (old API for text)
                 self.text_model = genai.GenerativeModel(self.text_model_name)
+
+                # Initialize new client for image/video (Nano Banana, Veo)
+                self.new_client = genai_new.Client(api_key=api_key)
 
                 print("✅ Google AI API initialized")
                 print(f"   • Text: {self.text_model_name}")
-                print(f"   • Image: {self.image_model_name}")
+                print(f"   • Image: {self.image_model_name} (Nano Banana)")
                 print(f"   • Video: {self.video_model_name}")
             except Exception as e:
                 print(f"❌ Google AI initialization failed: {e}")
                 self.client = None
+                self.new_client = None
 
     def generate_facebook_posts(self, trend_topic: str, source: str, metadata: str = "") -> List[str]:
         """
@@ -197,47 +203,72 @@ class GoogleAIGenerator:
     def generate_image(self, prompt: str) -> str:
         """
         Generate an image using Nano Banana Pro (Gemini 3 Pro Image)
+        Uses the new google.genai SDK with response_modalities=['TEXT', 'IMAGE']
 
         Args:
             prompt: Text description for image generation
 
         Returns:
-            URL of the generated image
+            Path to the generated image file (to be served via Flask)
         """
+        if not self.new_client:
+            print("⚠️ Google AI new client not available, using fallback")
+            return "https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1000"
+
         try:
-            print(f"🎨 Generating image with Nano Banana Pro: {prompt[:50]}...")
+            print(f"🎨 Generating image with Nano Banana (Gemini 3 Pro Image): {prompt[:50]}...")
 
-            # Use Gemini API for image generation
-            image_model = genai.GenerativeModel(self.image_model_name)
-
-            response = image_model.generate_content(
-                f"Create a professional social media image: {prompt}. High quality, engaging style.",
-                generation_config={
-                    'response_mime_type': 'image/png',
-                }
-            )
-
-            # Nano Banana Pro returns image data
-            # Save it temporarily and return URL
             import tempfile
             import uuid
-            from datetime import datetime
 
+            # Clean the prompt for safety filters
+            import re
+            emoji_pattern = re.compile("["
+                u"\U0001F600-\U0001F64F"
+                u"\U0001F300-\U0001F5FF"
+                u"\U0001F680-\U0001F6FF"
+                u"\U0001F1E0-\U0001F1FF"
+                u"\U00002702-\U000027B0"
+                u"\U000024C2-\U0001F251"
+                "]+", flags=re.UNICODE)
+            clean_prompt = emoji_pattern.sub('', prompt)
+            clean_prompt = re.sub(r'\*\*|\*|__|_|`|#', '', clean_prompt)
+            clean_prompt = re.sub(r'[<>{}[\]|\\^~]', '', clean_prompt).strip()
+
+            full_prompt = f"Create a professional, cinematic image: {clean_prompt}. High quality, photorealistic style."
+
+            # Use new SDK for image generation
+            response = self.new_client.models.generate_content(
+                model=self.image_model_name,  # "gemini-3-pro-image-preview"
+                contents=[full_prompt],
+                config=genai_types.GenerateContentConfig(
+                    response_modalities=['TEXT', 'IMAGE'],
+                    image_config=genai_types.ImageConfig(
+                        aspect_ratio="1:1",
+                        image_size="2K"
+                    ),
+                )
+            )
+
+            # Extract and save image from response
             temp_dir = tempfile.gettempdir()
             temp_filename = f"nano_banana_{uuid.uuid4()}.png"
             temp_path = os.path.join(temp_dir, temp_filename)
 
-            # Write image data to file
-            with open(temp_path, 'wb') as f:
-                f.write(response.candidates[0].content.parts[0].inline_data.data)
+            for part in response.parts:
+                if part.text is not None:
+                    print(f"   Gemini: {part.text[:100]}...")
+                elif image := part.as_image():
+                    image.save(temp_path)
+                    print(f"✅ Image generated successfully with Nano Banana")
+                    return temp_path
 
-            print(f"✅ Image generated successfully with Nano Banana Pro")
-
-            # Return file path (we'll need to serve this via Flask)
-            return temp_path
+            raise ValueError("No image generated in response")
 
         except Exception as e:
-            print(f"❌ Nano Banana Pro image generation failed: {e}")
+            print(f"❌ Nano Banana image generation failed: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback image
             return "https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1000"
 

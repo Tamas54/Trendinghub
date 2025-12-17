@@ -10,6 +10,27 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# GPT-5 models (latest generation)
+OPENAI_MODEL = 'gpt-5-mini'  # Primary model for post generation
+OPENAI_TEXT_MODEL = 'gpt-5-mini'  # Model for text generation
+
+
+def get_rag_style_context(topic: str) -> str:
+    """
+    Get RAG style context for a given topic.
+    Returns empty string if RAG store is not available or has no data.
+    """
+    try:
+        from rag_store import get_rag_store
+        rag_store = get_rag_store()
+        context = rag_store.get_style_context(topic, max_tokens=800)
+        if context:
+            print(f"🎭 RAG style context added ({len(context)} chars)")
+        return context
+    except Exception as e:
+        # RAG store not available or error - silently continue without it
+        return ""
+
 
 class PostGenerator:
     def __init__(self):
@@ -49,12 +70,21 @@ class PostGenerator:
         # ALWAYS generate in Hungarian (for Hungarian government official)
         language = "magyar"
 
+        # Get RAG style context if available
+        rag_context = get_rag_style_context(trend_topic)
+
         prompt = f"""
         Készíts 3 különböző Facebook posztot a következő trending témáról.
 
         TÉMA: {trend_topic}
         FORRÁS: {source}
-        EXTRA INFO: {metadata}
+
+        RÉSZLETES TARTALOM (HASZNÁLD EZT A POSZT MEGÍRÁSÁHOZ!):
+        {metadata}
+
+        {rag_context}
+
+        ⚠️ KÖTELEZŐ: Használd fel a fenti RÉSZLETES TARTALOM információit a poszt megírásához! Ne csak a címre hagyatkozz!
 
         ⚠️ FONTOS: A posztokat MINDIG MAGYAR NYELVEN írd, még akkor is, ha a téma angol nyelvű!
         Ha a téma angol, fordítsd le a tartalmat magyarra, de úgy, hogy érthető és természetes legyen.
@@ -81,11 +111,12 @@ class PostGenerator:
            - Gondolatébresztő lezárás vagy kérdés
 
         4. **HOSSZ ÉS STÍLUS**:
-           - 200-350 karakter összesen (részletesebb, informatívabb)
+           - 500-800 karakter összesen (részletesebb, informatívabb, tartalmas)
            - Jól strukturált, koherens mondatok
            - Könnyen olvasható, de tartalmas
            - Húzónevek/kulcsszavak kiemelése
            - Releváns részletek, adatok, összefüggések bemutatása
+           - Legyen elég hosszú ahhoz, hogy értékes információt adjon!
 
         5. **POLITIKAI TARTALOM**: MEGENGEDETT
            - Objektív, tényszerű megközelítés
@@ -114,7 +145,7 @@ class PostGenerator:
 
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o",  # GPT-4 Omni (GPT-4.1) - latest model
+                model=OPENAI_MODEL,  # GPT-5 mini - latest generation
                 messages=[
                     {
                         "role": "system",
@@ -133,8 +164,8 @@ STÍLUS: Professzionális, de barátságos és engaging. Emojikkal fokozd a figy
                         "content": prompt
                     }
                 ],
-                temperature=0.8,  # Creative but not too random
-                max_tokens=800
+                # GPT-5-mini only supports default temperature (1), don't set it
+                max_completion_tokens=2000  # Enough for 3 detailed posts of 500-800 chars each
             )
 
             # Parse response
@@ -186,16 +217,15 @@ STÍLUS: Professzionális, de barátságos és engaging. Emojikkal fokozd a figy
             return "❌ OpenAI API nem elérhető"
 
         try:
-            print(f"📝 Generating text with GPT-4: {prompt[:50]}...")
+            print(f"📝 Generating text with {OPENAI_TEXT_MODEL}: {prompt[:50]}...")
 
             response = self.client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model=OPENAI_TEXT_MODEL,  # GPT-5 mini
                 messages=[
                     {"role": "system", "content": "Te egy kreatív tartalomíró vagy, aki social media posztokat és videó scripteket készít."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=1000,
-                temperature=0.8
+                max_completion_tokens=1000  # GPT-5 uses max_completion_tokens, no temperature support
             )
 
             if response.choices:
@@ -233,9 +263,54 @@ STÍLUS: Professzionális, de barátságos és engaging. Emojikkal fokozd a figy
 
         return results
 
+    def generate_image_prompt(self, post_text: str) -> str:
+        """
+        Generate an optimized image prompt from post text using GPT-5
+
+        Args:
+            post_text: The social media post text
+
+        Returns:
+            Optimized image prompt for AI image generation
+        """
+        if not self.client:
+            return f"Social media visual for: {post_text[:200]}"
+
+        try:
+            print(f"📝 Generating image prompt from post...")
+
+            response = self.client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """Te egy AI képgeneráló prompt szakértő vagy. A feladatod, hogy social media posztokból készíts optimalizált képgeneráló promptokat.
+
+A prompt legyen:
+- Angol nyelvű (a legjobb képgenerátorok angolul működnek)
+- Vizuálisan leíró és konkrét
+- Stílus megjelöléssel (pl. "professional photography", "digital illustration", "minimalist design")
+- Színek és hangulat megjelölésével
+- Max 100 szavas"""
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Készíts egy képgeneráló promptot ehhez a poszthoz:\n\n{post_text}\n\nCsak a promptot írd, semmi mást!"
+                    }
+                ],
+                max_completion_tokens=1000  # GPT-5 uses reasoning tokens too, needs more space
+            )
+
+            prompt = response.choices[0].message.content.strip()
+            print(f"✅ Image prompt generated: {prompt[:50]}...")
+            return prompt
+        except Exception as e:
+            print(f"❌ Error generating image prompt: {e}")
+            return f"Professional social media visual representing: {post_text[:100]}"
+
     def generate_image(self, prompt: str) -> str:
         """
-        Generate an image using DALL-E 3
+        Generate an image using DALL-E 3 (fallback)
 
         Args:
             prompt: Text description for image generation
@@ -249,7 +324,7 @@ STÍLUS: Professzionális, de barátságos és engaging. Emojikkal fokozd a figy
             return "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1000"
 
         try:
-            print(f"🎨 Generating image for: {prompt[:50]}...")
+            print(f"🎨 Generating image with DALL-E 3 for: {prompt[:50]}...")
             response = self.client.images.generate(
                 model="dall-e-3",
                 prompt=f"Social media image for: {prompt}. High quality, professional, engaging style.",
