@@ -17,7 +17,7 @@ load_dotenv()
 class GoogleAIGenerator:
     def __init__(self):
         """Initialize Google AI client"""
-        api_key = os.getenv('GOOGLE_API_KEY')
+        api_key = os.getenv('GOOGLE_API_KEY', '').strip()  # Strip newlines from env var
 
         if not api_key:
             print("⚠️ GOOGLE_API_KEY not found in environment")
@@ -251,13 +251,37 @@ class GoogleAIGenerator:
             temp_filename = f"nano_banana_{uuid.uuid4()}.png"
             temp_path = os.path.join(temp_dir, temp_filename)
 
-            for part in response.parts:
-                if part.text is not None:
-                    print(f"   Gemini: {part.text[:100]}...")
-                elif image := part.as_image():
-                    image.save(temp_path)
+            # Handle different SDK versions
+            parts = None
+            if hasattr(response, 'parts') and response.parts:
+                parts = response.parts
+            elif hasattr(response, 'candidates') and response.candidates:
+                parts = response.candidates[0].content.parts
+
+            if not parts:
+                raise ValueError("No parts in response")
+
+            for part in parts:
+                # Check for inline_data (image bytes)
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    image_data = part.inline_data.data
+                    with open(temp_path, 'wb') as f:
+                        f.write(image_data)
                     print(f"✅ Image generated successfully with Nano Banana")
                     return temp_path
+                # Legacy: try as_image method
+                elif hasattr(part, 'as_image'):
+                    try:
+                        image = part.as_image()
+                        if image:
+                            image.save(temp_path)
+                            print(f"✅ Image generated successfully with Nano Banana")
+                            return temp_path
+                    except:
+                        pass
+                # Check for text
+                if hasattr(part, 'text') and part.text:
+                    print(f"   Gemini: {part.text[:100]}...")
 
             raise ValueError("No image generated in response")
 
